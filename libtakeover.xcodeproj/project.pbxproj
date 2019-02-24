@@ -15,7 +15,6 @@
 		87F2847C2218612700233A01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847B2218612700233A01 /* Assets.xcassets */; };
 		87F2847F2218612700233A01 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847D2218612700233A01 /* LaunchScreen.storyboard */; };
 		87F284822218612700233A01 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284812218612700233A01 /* main.m */; };
-		87F2848A2218614000233A01 /* libtakeover_test.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F284892218614000233A01 /* libtakeover_test.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,8 +34,6 @@
 		87F2847E2218612700233A01 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		87F284802218612700233A01 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		87F284812218612700233A01 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		87F284882218614000233A01 /* libtakeover_test.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = libtakeover_test.h; sourceTree = "<group>"; };
-		87F284892218614000233A01 /* libtakeover_test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = libtakeover_test.c; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -71,8 +68,6 @@
 			children = (
 				87F284722218612600233A01 /* AppDelegate.h */,
 				87F284732218612600233A01 /* AppDelegate.m */,
-				87F284882218614000233A01 /* libtakeover_test.h */,
-				87F284892218614000233A01 /* libtakeover_test.c */,
 				8765F93122231A3800A1FEC7 /* all_libtakeover.h */,
 				8765F93422231AC200A1FEC7 /* exception.hpp */,
 				8765F93222231AB700A1FEC7 /* exception.cpp */,
@@ -163,7 +158,6 @@
 				87F284772218612600233A01 /* ViewController.mm in Sources */,
 				8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */,
 				87F284822218612700233A01 /* main.m in Sources */,
-				87F2848A2218614000233A01 /* libtakeover_test.c in Sources */,
 				87F284742218612600233A01 /* AppDelegate.m in Sources */,
 				8765F93322231AB700A1FEC7 /* exception.cpp in Sources */,
 			);

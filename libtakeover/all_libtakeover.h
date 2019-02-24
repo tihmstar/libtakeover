@@ -22,7 +22,7 @@
 #define safeFree(ptr) ({if (ptr) free(ptr),ptr=NULL;})
 
 #define reterror(err) throw tihmstar::TKexception(__LINE__, err, LOCAL_FILENAME)
-#define retcustomerror(err,except) throw tihmstar::TKexception(__LINE__, err, LOCAL_FILENAME)
+#define retcustomerror(err,except) throw tihmstar::except(__LINE__, err, LOCAL_FILENAME)
 #define assure(cond) if ((cond) == 0) throw tihmstar::TKexception(__LINE__, "assure failed", LOCAL_FILENAME)
 #define assureMach(kernRet) if (kernRet) throw tihmstar::TKexception(__LINE__, "assure failed", LOCAL_FILENAME,kernRet)
 #define doassure(cond,code) do {if (!(cond)){(code);assure(cond);}} while(0)
