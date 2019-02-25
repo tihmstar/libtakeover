@@ -10,8 +10,8 @@
 #define all_libtakeover_h
 
 #ifdef DEBUG
-#define TAKEOVER_VERSION_COMMIT_COUNT "Debug"
-#define TAKEOVER_VERSION_COMMIT_SHA "Build: " __DATE__ " " __TIME__
+#define LIBTAKEOVER_VERSION_COMMIT_COUNT "Debug"
+#define LIBTAKEOVER_VERSION_COMMIT_SHA "Build: " __DATE__ " " __TIME__
 #endif
 
 #define log(a ...) ({printf(a),printf("\n");})

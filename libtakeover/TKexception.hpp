@@ -24,11 +24,11 @@ namespace tihmstar {
         }
 
         std::string build_commit_count() const override {
-            return TAKEOVER_VERSION_COMMIT_COUNT;
+            return LIBTAKEOVER_VERSION_COMMIT_COUNT;
         };
         
         std::string build_commit_sha() const override{
-            return TAKEOVER_VERSION_COMMIT_SHA;
+            return LIBTAKEOVER_VERSION_COMMIT_SHA;
         };
     };
 };

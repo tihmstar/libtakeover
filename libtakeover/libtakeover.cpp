@@ -42,13 +42,10 @@ typedef struct {
 } exception_raise_reply;
 #pragma pack()
 
-takeover::takeover(mach_port_t target):_target(target){
+takeover::takeover(mach_port_t target)
     /* init member vars */
-    _remoteStack = NULL;
-    _marionetteThread = MACH_PORT_NULL;
-    _exceptionHandler = MACH_PORT_NULL;
-    _emsg = {};
-    
+    :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_emsg({})
+{
     /* setup local variables */
     uint64_t *localStack = NULL;
     size_t stackpointer = 0;
@@ -79,10 +76,9 @@ takeover::takeover(mach_port_t target):_target(target){
             //if this step fails, make sure not to drop a send right to the target on cleanup!
             _target = MACH_PORT_NULL;
             assureMachclean(err);
-        });
-
+        }());
     }
-
+    
     //allocate remote stack
     assureMachclean(mach_vm_allocate(_target, &_remoteStack, _remoteStackSize, VM_FLAGS_ANYWHERE));
     assureMachclean(mach_vm_protect(_target, _remoteStack, _remoteStackSize, 1, VM_PROT_READ | VM_PROT_WRITE));
@@ -205,7 +201,7 @@ std::pair<int, kern_return_t> takeover::deinit(){
     
     if (_remoteStack) {
         err = mach_vm_deallocate(_target, _remoteStack, _remoteStackSize);
-        _remoteStack = NULL;
+        _remoteStack = 0;
         if (err) {
             error("deinit: line=%d err=%llx s=%s",__LINE__,(uint64_t)err,mach_error_string(err));
             if (!gerr.first) {gerr.first=__LINE__; gerr.second = err;}

@@ -19,7 +19,7 @@
 
 /* Begin PBXFileReference section */
 		8765F92E2223191000A1FEC7 /* libtakeover.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
-		8765F92F2223191000A1FEC7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = libtakeover.hpp; sourceTree = "<group>"; };
+		8765F92F2223191000A1FEC7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = libtakeover.hpp; path = ../include/libtakeover/libtakeover.hpp; sourceTree = "<group>"; };
 		8765F93122231A3800A1FEC7 /* all_libtakeover.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = all_libtakeover.h; sourceTree = "<group>"; };
 		8765F93222231AB700A1FEC7 /* exception.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = exception.cpp; path = external/liboffsetfinder64/liboffsetfinder64/exception.cpp; sourceTree = SOURCE_ROOT; };
 		8765F93422231AC200A1FEC7 /* exception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = exception.hpp; path = external/liboffsetfinder64/include/liboffsetfinder64/exception.hpp; sourceTree = SOURCE_ROOT; };
