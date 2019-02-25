@@ -1,2 +1,2 @@
-nobase_dist_include_HEADERS = libtakeover/libtakeover.h
+nobase_dist_include_HEADERS = libtakeover/libtakeover.hpp
 
