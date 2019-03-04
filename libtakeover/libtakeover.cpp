@@ -199,6 +199,8 @@ bool takeover::kidnapThread(){
             assureNoDoublethrow(assureMach(thread_terminate(kidnapped_thread)));
             kidnapped_thread = MACH_PORT_NULL;
         }
+        sleep(1);
+        
         if (lockIsInited) {
             assureNoDoublethrow(callfunc(func_mutex_destroy, {(uint64_t)mem_mutex}));
             lockIsInited = false;
@@ -318,7 +320,7 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
         func_pthread_exit  = dlsym(RTLD_NEXT, "pthread_exit");
         ret = thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count);
         
-        if (func_pthread_exit && !ret) {
+        if (func_pthread_exit && !ret && !_isFakeThread) {
             state.__pc = (uint64_t)func_pthread_exit;
             state.__x[0] = 0;
             

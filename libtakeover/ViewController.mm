@@ -39,10 +39,13 @@ void *loop(void*a){
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-
     
+    printf("pid=%d\n",getpid());
+
+
     tihmstar::takeover mytk(mach_task_self());
     mytk.kidnapThread();
+    
     char str[] = "/usr/lib/libjailbreak.dylib";
     void *strptr = mytk.allocMem(sizeof(str));
     mytk.writeMem(strptr, sizeof(str), str);
