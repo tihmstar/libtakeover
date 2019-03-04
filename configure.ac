@@ -27,7 +27,7 @@ CPPFLAGS+=" -D LIBTAKEOVER_VERSION_COMMIT_SHA=\\\"$(git rev-parse HEAD | tr -d '
 
 # Checks for programs.
 AC_PROG_CXX
-AC_PROG_C
+AC_PROG_CC
 
 
 # Checks for libraries.
