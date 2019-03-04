@@ -30,6 +30,9 @@
 #define assureclean(cond) do {if (!(cond)){clean();assure(cond);}} while(0)
 #define assureMachclean(kernRet) do {if (kernRet){clean();assureMach(kernRet);}} while(0)
 
+#define assureCatchClean(code) do {try { code; } catch (TKexception &e) { clean(); throw; }} while (0)
+#define assureNoDoublethrow(code) \
+    do{try {code;} catch (TKexception &e) {if (isInException) {error("Double exception! Error in line=%d",__LINE__);}else{throw;}}}while (0)
 
 
 #endif /* all_libtakeover_h */

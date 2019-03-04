@@ -25,13 +25,16 @@ namespace tihmstar {
         mach_port_t _exceptionHandler;
         mach_vm_address_t _remoteStack;
         const mach_vm_size_t _remoteStackSize = 0x4000;
+        bool _isFakeThread;
         
-        std::pair<int, kern_return_t>  deinit();
+        std::pair<int, kern_return_t>  deinit(bool noDrop = false);
         
     public:
         takeover(mach_port_t target);
         
         uint64_t callfunc(void *addr, const std::vector<uint64_t> &x);
+        
+        bool kidnapThread();
         
         void readMem(void *remote, size_t size, void *outAddr);
         void writeMem(void *remote, size_t size, void *inAddr);

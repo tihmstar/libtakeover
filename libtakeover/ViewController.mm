@@ -8,6 +8,9 @@
 
 #import "ViewController.h"
 #include "libtakeover.hpp"
+#include <dlfcn.h>
+#include <pthread/pthread.h>
+#include "TKexception.hpp"
 
 @interface ViewController ()
 
@@ -29,14 +32,30 @@ int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,
     return 0x41414141;
 }
 
+void *loop(void*a){
+    printf("thread=%p\n",mach_thread_self());
+    while (1);
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    tihmstar::takeover mytk(mach_task_self());
     
-    uint64_t ret =  mytk.callfunc((void*)&lol, {0x11,0x22,0x33});
-    printf("ret=%llx\n",ret);
-    mytk.callfunc((void*)&lol, {0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99});
+    tihmstar::takeover mytk(mach_task_self());
+    mytk.kidnapThread();
+    char str[] = "/usr/lib/libjailbreak.dylib";
+    void *strptr = mytk.allocMem(sizeof(str));
+    mytk.writeMem(strptr, sizeof(str), str);
+
+    void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(uint64_t)strptr,(uint64_t)RTLD_NOW});
+    printf("dlopen ok\n");
+
+    sleep(1);
+
+
+    void *sdlopen = dlsym(RTLD_NEXT, "dlopen");
+    void *rdlopen = (void*)&dlopen;
+    
     
     printf("done");
 }
