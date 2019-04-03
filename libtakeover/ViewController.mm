@@ -11,6 +11,7 @@
 #include <dlfcn.h>
 #include <pthread/pthread.h>
 #include "TKexception.hpp"
+#include <iostream>
 
 @interface ViewController ()
 
@@ -37,27 +38,47 @@ void *loop(void*a){
     while (1);
 }
 
+void (*start_thread)(void);
+
+void *testprint(char *arg){
+	printf("Got: %s\n", arg);
+	return NULL;
+}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+	
+	start_thread = (void (*)(void))dlsym(RTLD_NEXT, "thread_start");
     
     printf("pid=%d\n",getpid());
 
+	//stringToPrint = strdup("test");
 
-    tihmstar::takeover mytk(mach_task_self());
-    mytk.kidnapThread();
-    
-    char str[] = "/usr/lib/libjailbreak.dylib";
-    void *strptr = mytk.allocMem(sizeof(str));
-    mytk.writeMem(strptr, sizeof(str), str);
+	try {
+		tihmstar::takeover mytk(mach_task_self());
+		mytk.kidnapThread();
+	
+		char *str = "/electra/helloworld.dylib";
+		void *strptr = mytk.allocMem(0x100 + strlen(str) + 1);
+		mytk.writeMem((void *)(0x100 + (uint64_t)strptr), strlen(str) + 1, str);
 
-    void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(uint64_t)strptr,(uint64_t)RTLD_NOW});
-    printf("dlopen ok\n");
+		void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {0x100 + (uint64_t)strptr,(uint64_t)RTLD_NOW});
+		printf("dlopen ok\n");
+		
+		mytk.callfunc((void *)&testprint, {0x100 + (uint64_t)strptr});
+	
+		/*mytk.callfunc((void *)&pthread_create, {(uint64_t)NULL, (uint64_t)NULL, (uint64_t)&testprint, 0x100 + (uint64_t)strptr});*/
 
-    sleep(1);
+		sleep(1);
 
 
-    void *sdlopen = dlsym(RTLD_NEXT, "dlopen");
-    void *rdlopen = (void*)&dlopen;
+		/*void *sdlopen = dlsym(RTLD_NEXT, "dlopen");
+		void *rdlopen = (void*)&dlopen;*/
+	} catch (tihmstar::exception &e){
+		std::cerr << "Exception: " << e.what() << "; Code: " << (e.code() & 0xff) << "; Filelength: " << (e.code() >> 16) << std::endl;
+	} catch (const std::exception &e){
+		std::cerr << "Exception: " << e.what() << std::endl;
+	}
     
     
     printf("done");
