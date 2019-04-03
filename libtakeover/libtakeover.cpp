@@ -46,7 +46,7 @@ typedef struct {
 takeover::takeover(mach_port_t target)
     /* init member vars */
     :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_emsg({}),
-        _isFakeThread(true)
+        _isFakeThread(true), isCallingSelf(false)
 {
     /* setup local variables */
     uint64_t *localStack = NULL;
@@ -106,9 +106,15 @@ takeover::takeover(mach_port_t target)
     assureMachclean(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
     
     state.__x[0] = (uint64_t)_remoteStack;
+#if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
     state.__lr = 0x7171717171717171;        //actual magic end
     assureclean(state.__pc = (uint64_t)dlsym(RTLD_NEXT, "thread_start"));
     state.__sp = (uint64_t)(_remoteStack + stackpointer*sizeof(uint64_t));
+#else
+    state.__opaque_lr = (void *)0x7171717171717171;        //actual magic end
+    assureclean(state.__opaque_pc = dlsym(RTLD_NEXT, "thread_start"));
+    state.__opaque_sp = (void *)(_remoteStack + stackpointer*sizeof(uint64_t));
+#endif
     
     assureMachclean(thread_set_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, ARM_THREAD_STATE64_COUNT));
 
@@ -139,8 +145,13 @@ uint64_t takeover::callfunc(void *addr, const std::vector<uint64_t> &x){
     
     assureMach(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
     
+#if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
     state.__lr = lrmagic;
     state.__pc = (uint64_t)addr;
+#else
+    state.__opaque_lr = (void *)lrmagic;
+    state.__opaque_pc = (void *)addr;
+#endif
     
     for (int i=0; i<29; i++) {
         state.__x[i] = (i<x.size()) ? x[i] : 0;
@@ -167,8 +178,14 @@ uint64_t takeover::callfunc(void *addr, const std::vector<uint64_t> &x){
     
     //get result
     assureMach(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
-    
-    assure(state.__pc == lrmagic);
+	
+	if (!isCallingSelf){
+#if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
+    	assure(state.__pc == lrmagic);
+#else
+    	assure(state.__opaque_pc = (void *)lrmagic);
+#endif
+	}
     
     return state.__x[0];
 }
@@ -262,7 +279,11 @@ bool takeover::kidnapThread(){
     assureMachclean(thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_DEFAULT | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64));
 
     
+#if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
     state.__lr = 0x6161616161616161; //magic end
+#else
+    state.__opaque_lr = (void *)0x6161616161616161; //magic end
+#endif
     
     //set magic end
     assureMachclean(thread_set_state(kidnapped_thread, ARM_THREAD_STATE64, (thread_state_t)&state, ARM_THREAD_STATE64_COUNT));
@@ -321,7 +342,11 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
         ret = thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count);
         
         if (func_pthread_exit && !ret && !_isFakeThread) {
+#if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
             state.__pc = (uint64_t)func_pthread_exit;
+#else
+            state.__opaque_pc = func_pthread_exit;
+#endif
             state.__x[0] = 0;
             
             //clean terminate of kidnapped thread
