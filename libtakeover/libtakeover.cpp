@@ -253,6 +253,7 @@ bool takeover::kidnapThread(){
     assureclean(!ret);
 
     assureCatchClean(ret = callfunc(func_pthread_create, {(uint64_t)mem_thread,0,(uint64_t)func_mutex_lock,(uint64_t)mem_mutex}));
+	//ret = pthread_create((pthread_t *)mem_thread, NULL, (void *(*)(void *))func_mutex_lock, mem_mutex);
     assureclean(!ret);
 
     //find new thread
