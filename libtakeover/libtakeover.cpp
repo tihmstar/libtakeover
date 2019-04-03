@@ -46,7 +46,7 @@ typedef struct {
 takeover::takeover(mach_port_t target)
     /* init member vars */
     :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_emsg({}),
-        _isFakeThread(true), isCallingSelf(false)
+        _isFakeThread(true)
 {
     /* setup local variables */
     uint64_t *localStack = NULL;
@@ -179,13 +179,11 @@ uint64_t takeover::callfunc(void *addr, const std::vector<uint64_t> &x){
     //get result
     assureMach(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
 	
-	if (!isCallingSelf){
 #if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
-    	assure(state.__pc == lrmagic);
+	assure(state.__pc == lrmagic);
 #else
-    	assure(state.__opaque_pc = (void *)lrmagic);
+	assure(((uint64_t)state.__opaque_pc & 0x1FFFFFFFF) == lrmagic);
 #endif
-	}
     
     return state.__x[0];
 }

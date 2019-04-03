@@ -30,8 +30,6 @@ namespace tihmstar {
         std::pair<int, kern_return_t>  deinit(bool noDrop = false);
         
     public:
-		bool isCallingSelf;
-		
         takeover(mach_port_t target);
         
         uint64_t callfunc(void *addr, const std::vector<uint64_t> &x);
