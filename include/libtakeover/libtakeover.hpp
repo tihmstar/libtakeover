@@ -11,6 +11,7 @@
 
 #include <mach/mach.h>
 #include <vector>
+#include <libtakeover/TKexception.hpp>
 
 namespace tihmstar {
     typedef struct {
@@ -37,12 +38,15 @@ namespace tihmstar {
         bool kidnapThread();
         
         void readMem(void *remote, size_t size, void *outAddr);
-        void writeMem(void *remote, size_t size, void *inAddr);
+        void writeMem(void *remote, size_t size, const void *inAddr);
         void *allocMem(size_t size);
         void deallocMem(void *remote,size_t size);
 
         ~takeover();
-
+        
+        
+        static std::string build_commit_count();
+        static std::string build_commit_sha();
     };
     
 };

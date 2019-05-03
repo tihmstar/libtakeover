@@ -22,8 +22,10 @@ AM_INIT_AUTOMAKE
 
 CPPFLAGS+=" -std=c++11 -O3"
 
-CPPFLAGS+=" -D LIBTAKEOVER_VERSION_COMMIT_COUNT=\\\"$(git rev-list --count HEAD | tr -d '\n')\\\""
-CPPFLAGS+=" -D LIBTAKEOVER_VERSION_COMMIT_SHA=\\\"$(git rev-parse HEAD | tr -d '\n')\\\""
+CPPFLAGS+=" -D VERSION_COMMIT_COUNT=\\\"$(git rev-list --count HEAD | tr -d '\n')\\\""
+CPPFLAGS+=" -D VERSION_COMMIT_SHA=\\\"$(git rev-parse HEAD | tr -d '\n')\\\""
+CPPFLAGS+=" -D EXPECTIONNAME=TKexception"
+
 
 # Checks for programs.
 AC_PROG_CXX
@@ -35,15 +37,6 @@ AC_PROG_CC
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h unistd.h])
 
-# Checks for typedefs, structures, and compiler characteristics.
-AC_CHECK_HEADER_STDBOOL
-AC_TYPE_INT64_T
-AC_TYPE_INT8_T
-AC_TYPE_SIZE_T
-AC_TYPE_UINT32_T
-AC_TYPE_UINT64_T
-AC_TYPE_UINT8_T
-
 # Checks for library functions.
 AC_FUNC_ERROR_AT_LINE
 
@@ -52,6 +45,7 @@ LT_INIT
 AC_CONFIG_FILES([Makefile
                  include/Makefile
                  libtakeover/Makefile
-		 libtakeover.pc])
+		 libtakeover.pc
+		 tools/Makefile])
 AC_OUTPUT
 

@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8765F92E2223191000A1FEC7 /* libtakeover.cpp */; };
-		8765F93322231AB700A1FEC7 /* exception.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8765F93222231AB700A1FEC7 /* exception.cpp */; };
+		876D8D11227C5D3900142E68 /* exception.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 876D8D10227C5D3900142E68 /* exception.cpp */; };
 		87F284742218612600233A01 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284732218612600233A01 /* AppDelegate.m */; };
 		87F284772218612600233A01 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 87F284762218612600233A01 /* ViewController.mm */; };
 		87F2847A2218612600233A01 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F284782218612600233A01 /* Main.storyboard */; };
@@ -20,10 +20,8 @@
 /* Begin PBXFileReference section */
 		8765F92E2223191000A1FEC7 /* libtakeover.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
 		8765F92F2223191000A1FEC7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = libtakeover.hpp; path = ../include/libtakeover/libtakeover.hpp; sourceTree = "<group>"; };
-		8765F93122231A3800A1FEC7 /* all_libtakeover.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = all_libtakeover.h; sourceTree = "<group>"; };
-		8765F93222231AB700A1FEC7 /* exception.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = exception.cpp; path = external/liboffsetfinder64/liboffsetfinder64/exception.cpp; sourceTree = SOURCE_ROOT; };
-		8765F93422231AC200A1FEC7 /* exception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = exception.hpp; path = external/liboffsetfinder64/include/liboffsetfinder64/exception.hpp; sourceTree = SOURCE_ROOT; };
-		8765F93622231BCD00A1FEC7 /* TKexception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = TKexception.hpp; sourceTree = "<group>"; };
+		8765F93622231BCD00A1FEC7 /* TKexception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TKexception.hpp; path = ../include/libtakeover/TKexception.hpp; sourceTree = "<group>"; };
+		876D8D10227C5D3900142E68 /* exception.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = exception.cpp; path = external/libgeneral/libgeneral/exception.cpp; sourceTree = SOURCE_ROOT; };
 		87F2846F2218612600233A01 /* libtakeover.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = libtakeover.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		87F284722218612600233A01 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		87F284732218612600233A01 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -47,6 +45,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		876D8D0E227C5D2900142E68 /* external */ = {
+			isa = PBXGroup;
+			children = (
+				876D8D0F227C5D3000142E68 /* libgeneral */,
+			);
+			path = external;
+			sourceTree = "<group>";
+		};
+		876D8D0F227C5D3000142E68 /* libgeneral */ = {
+			isa = PBXGroup;
+			children = (
+				876D8D10227C5D3900142E68 /* exception.cpp */,
+			);
+			path = libgeneral;
+			sourceTree = "<group>";
+		};
 		87F284662218612600233A01 = {
 			isa = PBXGroup;
 			children = (
@@ -66,11 +80,9 @@
 		87F284712218612600233A01 /* libtakeover */ = {
 			isa = PBXGroup;
 			children = (
+				876D8D0E227C5D2900142E68 /* external */,
 				87F284722218612600233A01 /* AppDelegate.h */,
 				87F284732218612600233A01 /* AppDelegate.m */,
-				8765F93122231A3800A1FEC7 /* all_libtakeover.h */,
-				8765F93422231AC200A1FEC7 /* exception.hpp */,
-				8765F93222231AB700A1FEC7 /* exception.cpp */,
 				8765F93622231BCD00A1FEC7 /* TKexception.hpp */,
 				8765F92F2223191000A1FEC7 /* libtakeover.hpp */,
 				8765F92E2223191000A1FEC7 /* libtakeover.cpp */,
@@ -159,7 +171,7 @@
 				8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */,
 				87F284822218612700233A01 /* main.m in Sources */,
 				87F284742218612600233A01 /* AppDelegate.m in Sources */,
-				8765F93322231AB700A1FEC7 /* exception.cpp in Sources */,
+				876D8D11227C5D3900142E68 /* exception.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,9 +314,17 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = M7EX974CE7;
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/external/liboffsetfinder64/include";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2H3GC964X8;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					"EXPECTIONNAME='TKexception'",
+				);
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/external/libgeneral/include",
+					"$(SRCROOT)/include",
+				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -313,7 +333,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = net.tihmstar.libtakeover;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = hasi;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -323,9 +343,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = "";
-				HEADER_SEARCH_PATHS = "$(SRCROOT)/external/liboffsetfinder64/include";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2H3GC964X8;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/external/libgeneral/include",
+					"$(SRCROOT)/include",
+				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 11.0;
 				LD_RUNPATH_SEARCH_PATHS = (

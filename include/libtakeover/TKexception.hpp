@@ -9,8 +9,8 @@
 #ifndef tkexception_hpp
 #define tkexception_hpp
 
-#include <liboffsetfinder64/exception.hpp>
-#include "all_libtakeover.h"
+#include <libgeneral/exception.hpp>
+#include <libgeneral/macros.h>
 #include <stdint.h>
 
 namespace tihmstar {
@@ -27,11 +27,11 @@ namespace tihmstar {
         }
 
         std::string build_commit_count() const override{
-            return LIBTAKEOVER_VERSION_COMMIT_COUNT;
+            return VERSION_COMMIT_COUNT;
         };
         
         std::string build_commit_sha() const override{
-            return LIBTAKEOVER_VERSION_COMMIT_SHA;
+            return VERSION_COMMIT_SHA;
         };
         
     };

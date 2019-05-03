@@ -20,20 +20,20 @@
 
 int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,uint64_t a7,uint64_t a8){
     printf("lol\n");
-    printf("a1=%p\n",a1);
-    printf("a2=%p\n",a2);
-    printf("a3=%p\n",a3);
-    printf("a4=%p\n",a4);
-    printf("a5=%p\n",a5);
-    printf("a6=%p\n",a6);
-    printf("a6=%p\n",a7);
-    printf("a7=%p\n",a8);    
+    printf("a1=%p\n",(void*)a1);
+    printf("a2=%p\n",(void*)a2);
+    printf("a3=%p\n",(void*)a3);
+    printf("a4=%p\n",(void*)a4);
+    printf("a5=%p\n",(void*)a5);
+    printf("a6=%p\n",(void*)a6);
+    printf("a6=%p\n",(void*)a7);
+    printf("a7=%p\n",(void*)a8);
     printf("lol done\n");
     return 0x41414141;
 }
 
 void *loop(void*a){
-    printf("thread=%p\n",mach_thread_self());
+    printf("thread=%p\n",(void*)(uint64_t)mach_thread_self());
     while (1);
 }
 

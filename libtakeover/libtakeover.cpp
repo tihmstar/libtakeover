@@ -6,9 +6,6 @@
 //  Copyright © 2019 tihmstar. All rights reserved.
 //
 
-#define LOCAL_FILENAME "libtakeover.cpp"
-
-#include "all_libtakeover.h"
 #include "libtakeover.hpp"
 #include "TKexception.hpp"
 #include <stdlib.h>
@@ -313,7 +310,7 @@ void takeover::readMem(void *remote, size_t size, void *outAddr){
     mach_vm_size_t out = size;
     assureMach(mach_vm_read_overwrite(_target, (mach_vm_address_t)remote , (mach_vm_size_t)size, (mach_vm_address_t) outAddr, &out));
 }
-void takeover::writeMem(void *remote, size_t size, void *inAddr){
+void takeover::writeMem(void *remote, size_t size, const void *inAddr){
     assureMach(mach_vm_write(_target, (mach_vm_address_t)remote, (vm_offset_t)inAddr, (mach_msg_type_number_t)size));
 }
 void *takeover::allocMem(size_t size){
@@ -422,3 +419,11 @@ takeover::~takeover(){
         error("[~takeover] deinit failed on line %d with code %d",err.first,err.second);
     }
 }
+
+std::string takeover::build_commit_count(){
+    return VERSION_COMMIT_COUNT;
+};
+
+std::string takeover::build_commit_sha(){
+    return VERSION_COMMIT_SHA;
+};
