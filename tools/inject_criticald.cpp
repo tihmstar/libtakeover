@@ -17,7 +17,7 @@ void platformizeme() {
     void* handle = NULL;
     const char *dlsym_error = NULL;
     
-    assure(!(handle = dlopen("/usr/lib/libjailbreak.dylib", RTLD_LAZY)));
+    assure(handle = dlopen("/usr/lib/libjailbreak.dylib", RTLD_LAZY));
     
     // Reset errors
     dlerror();
@@ -43,20 +43,28 @@ void inject(uint32_t pid, const char *dylib){
 
     printf("Remote task: 0x%x\n", remoteTask);
 
-    printf("platformizing myself\n");
+    printf("platformizing myself...");
     try {
         platformizeme();
-        printf("platformized!\n");
+        printf("ok!\n");
     } catch (TKexception &e) {
+        printf("fail!\n");
+        printf("[TKexception]:\n");
+        printf("what=%s\n",e.what());
+        printf("code=%d\n",e.code());
+        printf("commit count=%s:\n",e.build_commit_count().c_str());
+        printf("commit sha  =%s:\n",e.build_commit_sha().c_str());
+        printf("\n");
         printf("platformizing failed! Continuing without platformization (injection to platform processes will fail!)\n");
     }
 
-    printf("Initing takeover!\n");
+    printf("Initing takeover...");
     tihmstar::takeover mytk(remoteTask);
-    printf("Inited takeover!\n");
+    printf("ok!\n");
 
+    printf("kidnapping remote thread...");
     mytk.kidnapThread();
-    printf("kidnapped remote thread!\n");
+    printf("ok!\n");
 
     assure(dylibPathAddr = mytk.allocMem(0x100 + strlen(dylib) + 1));
     printf("Dylib Path Addr: 0x%llx\n", 0x100 + (uint64_t)dylibPathAddr);
@@ -68,22 +76,20 @@ void inject(uint32_t pid, const char *dylib){
 
     mytk.deallocMem(dylibPathAddr, 0x100 + strlen(dylib) + 1);
 
-    if (rt){
-        printf("Error occurred, retrieving...\n");
-        if (uint64_t error = mytk.callfunc((void *)&dlerror, {})){
-
-            uint64_t len = mytk.callfunc((void *)&strlen, {error});
-            char *local_cstring = (char *)malloc(len + 1);
-
-            mytk.readMem((void *)error, len + 1, local_cstring);
-
-            printf("Error is %s\n", local_cstring);
-            free(local_cstring);
-        } else{
-            printf("Error occurred, but dlerror returned NULL!\n");
-        }
+    printf("dlopen returned 0x%08llx\n",rt);
+    
+    if (uint64_t error = mytk.callfunc((void *)&dlerror, {})){
+        
+        uint64_t len = mytk.callfunc((void *)&strlen, {error});
+        char *local_cstring = (char *)malloc(len + 1);
+        
+        mytk.readMem((void *)error, len + 1, local_cstring);
+        
+        printf("Error is %s\n", local_cstring);
+        free(local_cstring);
         reterror("Failed to inject!");
     }
+    
     printf("No error occurred!\n");
 }
 
