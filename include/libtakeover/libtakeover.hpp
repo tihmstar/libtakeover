@@ -28,22 +28,36 @@ namespace tihmstar {
         const mach_vm_size_t _remoteStackSize = 0x4000;
         bool _isFakeThread;
         
-        std::pair<int, kern_return_t>  deinit(bool noDrop = false);
+        mach_port_t _remoteSelf;
+        void *_remoteScratchSpace;
+        size_t _remoteScratchSpaceSize;
+
         
+        
+        std::pair<int, kern_return_t>  deinit(bool noDrop = false);
+        takeover();
+        void primitiveWrite(void *remote, void *inAddr, size_t size);
+        void primitiveRead(void *remote, void *outAddr, size_t size);
+
     public:
-        takeover(mach_port_t target);
+        takeover(const mach_port_t target);
+        takeover(const takeover &) = delete; //no copy constructor
+        takeover(takeover &&); //move constructor
+        
+        static takeover takeoverWithExceptionHandler(mach_port_t exceptionHandler);
         
         uint64_t callfunc(void *addr, const std::vector<uint64_t> &x);
         
-        bool kidnapThread();
-        
-        void readMem(void *remote, size_t size, void *outAddr);
-        void writeMem(void *remote, size_t size, const void *inAddr);
+        void kidnapThread();
+        void overtakeMe();
+
+        void readMem(void *remote, void *outAddr, size_t size);
+        void writeMem(void *remote, const void *inAddr, size_t size);
         void *allocMem(size_t size);
         void deallocMem(void *remote,size_t size);
 
-        ~takeover();
         
+        ~takeover();
         
         static std::string build_commit_count();
         static std::string build_commit_sha();

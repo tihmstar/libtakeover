@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <pthread/pthread.h>
+#include <stdlib.h>
 
 #include <unistd.h>
 
@@ -38,13 +39,31 @@ typedef struct {
     NDR_record_t NDR;
     kern_return_t RetCode;
 } exception_raise_reply;
+
+typedef struct {
+    mach_msg_header_t Head;
+    NDR_record_t NDR;
+    kern_return_t RetCode;
+    int flavor;
+    mach_msg_type_number_t new_stateCnt;
+    natural_t new_state[614];
+} exception_raise_state_reply;
 #pragma pack()
+
+takeover::takeover()
+    /* init member vars */
+    :_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
+        _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0)
+{
+    
+}
 
 takeover::takeover(mach_port_t target)
     /* init member vars */
-    :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_emsg({}),
-        _isFakeThread(true)
+    :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
+        _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0)
 {
+    
     /* setup local variables */
     uint64_t *localStack = NULL;
     size_t stackpointer = 0;
@@ -120,74 +139,93 @@ takeover::takeover(mach_port_t target)
     assureMachclean(mach_port_insert_right(mach_task_self(),_exceptionHandler, _exceptionHandler, MACH_MSG_TYPE_MAKE_SEND));
     
     //set our new port
-    assureMachclean(thread_set_exception_ports(_marionetteThread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), _exceptionHandler, EXCEPTION_DEFAULT | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64));
+    assureMachclean(thread_set_exception_ports(_marionetteThread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), _exceptionHandler, EXCEPTION_STATE | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64));
 
     //initialize our remote thread
     assureMachclean(thread_resume(_marionetteThread));
     
-    
     //wait for exception
-
     assureMachclean(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
     
     finalClean();
 }
 
-uint64_t takeover::callfunc(void *addr, const std::vector<uint64_t> &x){
-    arm_thread_state64_t state = {0};
-    mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
-    uint64_t lrmagic = 0x71717171;
+takeover::takeover(takeover &&tk)
+    :_target(tk._target),_remoteStack(tk._remoteStack),_marionetteThread(tk._marionetteThread),_exceptionHandler(tk._exceptionHandler),_emsg(tk._emsg),
+        _isFakeThread(tk._isFakeThread)
+{
+    tk._remoteStack = 0;
+    tk._target = MACH_PORT_NULL;
+    tk._exceptionHandler = MACH_PORT_NULL;
+    tk._marionetteThread = MACH_PORT_NULL;
+}
 
+takeover takeover::takeoverWithExceptionHandler(mach_port_t exceptionHandler){
+    takeover tk;
+    tk._exceptionHandler = exceptionHandler;
+    tk._isFakeThread = false;
+    
+    assureMach(mach_msg(&tk._emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(tk._emsg), tk._exceptionHandler, 0, MACH_PORT_NULL));
+    
+    tk._marionetteThread = tk._emsg.head.msgh_remote_port;
+    
+    return tk;
+}
+
+uint64_t takeover::callfunc(void *addr, const std::vector<uint64_t> &x){
+    arm_thread_state64_t *state = (arm_thread_state64_t*)(_emsg.data+0x24);
+    uint64_t lrmagic = 0x71717171;
+    
     retassure(x.size() <= 29,"only up to 29 arguments allowed");
     
-    assureMach(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
-    
 #if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
-    state.__lr = lrmagic;
-    state.__pc = (uint64_t)addr;
+    state->__lr = lrmagic;
+    state->__pc = (uint64_t)addr;
 #else
     state.__opaque_lr = (void *)lrmagic;
     state.__opaque_pc = (void *)addr;
 #endif
     
     for (int i=0; i<29; i++) {
-        state.__x[i] = (i<x.size()) ? x[i] : 0;
+        state->__x[i] = (i<x.size()) ? x[i] : 0;
     }
     
-    assureMach(thread_set_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, ARM_THREAD_STATE64_COUNT));
-    
-    exception_raise_reply reply = {0};
+    exception_raise_state_reply reply = {};
     exception_raise_request* req = (exception_raise_request*)&_emsg;
-    reply.Head.msgh_bits = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(req->Head.msgh_bits), 0);
-    reply.Head.msgh_size = sizeof(reply);
-    reply.Head.msgh_remote_port = req->Head.msgh_remote_port;
+
+    reply.Head.msgh_bits = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(_emsg.head.msgh_bits), 0);
+    reply.new_stateCnt = ARM_THREAD_STATE64_COUNT;
+    reply.Head.msgh_remote_port = _emsg.head.msgh_remote_port;
     reply.Head.msgh_local_port = MACH_PORT_NULL;
-    reply.Head.msgh_id = req->Head.msgh_id + 100;
-    
+    reply.Head.msgh_id = _emsg.head.msgh_id + 100;
+
     reply.NDR = req->NDR;
     reply.RetCode = KERN_SUCCESS;
+    reply.flavor = ARM_THREAD_STATE64;
+    memcpy(reply.new_state, state, sizeof(arm_thread_state64_t));
+    
+    reply.Head.msgh_size = (mach_msg_size_t)(sizeof(exception_raise_state_reply) - 2456) + (((4 * reply.new_stateCnt))); //straight from MIG
     
     //resume
-    assureMach(mach_msg(&reply.Head, MACH_SEND_MSG|MACH_MSG_OPTION_NONE, (mach_msg_size_t)sizeof(reply), 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL));
+    assureMach(mach_msg(&reply.Head, MACH_SEND_MSG|MACH_MSG_OPTION_NONE, (mach_msg_size_t)reply.Head.msgh_size, 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL));
     
     //wait until end of function
     assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
     
-    //get result
-    assureMach(thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count));
-	
+    //get result (implicit through receiving mach_msg)
+    
 #if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
-	assure(state.__pc == lrmagic);
+	assure(state->__pc == lrmagic);
 #else
-	assure(((uint64_t)state.__opaque_pc & 0x1FFFFFFFF) == lrmagic);
+	assure(((uint64_t)state->__opaque_pc & 0x1FFFFFFFF) == lrmagic);
 #endif
     
-    return state.__x[0];
+    return state->__x[0];
 }
 
-bool takeover::kidnapThread(){
+void takeover::kidnapThread(){
     if (!_isFakeThread)
-        return true;
+        return;
     void *mem_mutex           = NULL;
     void *mem_thread          = NULL;
     void *func_mutex_init     = NULL;
@@ -211,7 +249,6 @@ bool takeover::kidnapThread(){
             assureNoDoublethrow(assureMach(thread_terminate(kidnapped_thread)));
             kidnapped_thread = MACH_PORT_NULL;
         }
-        sleep(1);
         
         if (lockIsInited) {
             assureNoDoublethrow(callfunc(func_mutex_destroy, {(uint64_t)mem_mutex}));
@@ -252,6 +289,7 @@ bool takeover::kidnapThread(){
     assureCatchClean(ret = callfunc(func_pthread_create, {(uint64_t)mem_thread,0,(uint64_t)func_mutex_lock,(uint64_t)mem_mutex}));
     assureclean(!ret);
 
+    usleep(420); //wait for new thread to spawn
     //find new thread
     assureMachclean(task_threads(_target, &threadList, &threadCount));
     
@@ -271,7 +309,7 @@ bool takeover::kidnapThread(){
     assureMachclean(mach_port_insert_right(mach_task_self(),newExceptionHandler, newExceptionHandler, MACH_MSG_TYPE_MAKE_SEND));
     
     //set our new port
-    assureMachclean(thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_DEFAULT | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64));
+    assureMachclean(thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_STATE | MACH_EXCEPTION_CODES, ARM_THREAD_STATE64));
 
     
 #if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
@@ -285,7 +323,7 @@ bool takeover::kidnapThread(){
 
     //unlock mutex and let thread fall in magic
     assureCatchClean(ret = callfunc(func_mutex_unlock, {(uint64_t)mem_mutex}));
-
+    
     //kill marionettThread
     deinit(true);
     
@@ -301,69 +339,358 @@ bool takeover::kidnapThread(){
     
     clean(false);
     _isFakeThread = false;
-    return !_isFakeThread;
+}
+
+void takeover::primitiveWrite(void *remote, void *inAddr, size_t size){
+    for (int i=0; i<size; i++) {
+        callfunc((void*)memset,{(uint64_t)remote+i,(uint64_t)((uint8_t*)inAddr)[i],1});
+    }
+}
+
+void takeover::primitiveRead(void *remote, void *outAddr, size_t size){
+    uint8_t ab = *(uint8_t*)memcmp;
+    for (int i=0; i<size; i++) {
+        ((uint8_t*)outAddr)[i] = (uint8_t)callfunc((void*)memcmp,{(uint64_t)remote+i,(uint64_t)memcmp,1}) + ab;
+    }
 }
 
 
 
-void takeover::readMem(void *remote, size_t size, void *outAddr){
+void takeover::overtakeMe(){
+    if (_remoteSelf)
+        return;
+    kern_return_t ret = 0;
+    mach_port_t localSenderPort = MACH_PORT_NULL;
+    mach_port_t remoteListenerPort = MACH_PORT_NULL;
+    mach_port_t remoteExcetionHandlerPort = MACH_PORT_NULL;
+    auto clean =[&](bool isInException = true){ //cleanup only code
+        if (localSenderPort) {
+            assureNoDoublethrow(assureMach(mach_port_deallocate(mach_task_self(), localSenderPort)));
+        }
+        if (remoteListenerPort) {
+            assureNoDoublethrow(assureMach(callfunc((void*)mach_port_deallocate,{(uint64_t)mach_task_self_, (uint64_t)remoteListenerPort})));
+        }
+    };
+    //no cleanup vars
+    void *curScratchSpace = NULL;
+    size_t curScratchSpaceSize = 0;
+    mach_port_t remoteThreadPort = MACH_PORT_NULL;
+    mach_port_t *remoteListener = NULL;
+    exception_mask_array_t masks = NULL;
+    mach_msg_type_number_t *masksCnt = NULL;
+    exception_handler_array_t old_handlers = NULL;
+    exception_behavior_array_t old_behaviors = NULL;
+    exception_flavor_array_t old_flavors = NULL;
+    exception_raise_request msg = {};
+    exception_raise_request *remoteMsg = NULL;
+    
+#define allocScratchSpace(size) ((void*)(curScratchSpace = (uint8_t *)curScratchSpace-size,({assure(curScratchSpaceSize>=size);}),curScratchSpaceSize-=size,(uint8_t *)curScratchSpace-size))
+    
+    curScratchSpaceSize = 0x1000;
+    {
+        //alloc mem chicken & egg problem
+        //you need to have mem, to alloc mem ._.
+        
+        //alloc temp mem
+        void *tempScratchSpace = (void*)callfunc((void*)malloc, {0x10});
+        _remoteScratchSpaceSize = 0x10;
+        _remoteScratchSpace = tempScratchSpace;
+        
+        //do real allocation
+        curScratchSpace  = allocMem(curScratchSpaceSize);
+        _remoteScratchSpace = curScratchSpace;
+        _remoteScratchSpaceSize = curScratchSpaceSize;
+        
+        //free temp mem
+        callfunc((void*)free, {(uint64_t)tempScratchSpace});
+    }
+    allocScratchSpace(0x100);    //reserve first few bytes for possible internal stuff
+
+    remoteListener = (mach_port_t*)allocScratchSpace(sizeof(mach_port_t));
+    
+    /*
+     remote: create remote port with rcv right
+     */
+    //get remote thread port
+    assure(remoteThreadPort = (mach_port_t)callfunc((void*)mach_thread_self, {}));
+    
+    //get remote exception handler port (which a a port we have a recv right to)
+    masks = (exception_mask_array_t)allocScratchSpace(sizeof(exception_mask_array_t));
+    masksCnt = (mach_msg_type_number_t *)allocScratchSpace(sizeof(mach_msg_type_number_t *));
+    old_handlers = (exception_handler_array_t)allocScratchSpace(sizeof(exception_handler_array_t));
+    old_behaviors = (exception_behavior_array_t)allocScratchSpace(sizeof(exception_behavior_array_t));
+    old_flavors = (exception_flavor_array_t)allocScratchSpace(sizeof(exception_flavor_array_t));
+    remoteMsg = (exception_raise_request*)allocScratchSpace(sizeof(exception_raise_request));
+    
+    //construct mach msg locally
+    msg.Head.msgh_bits = MACH_MSGH_BITS_SET(MACH_MSG_TYPE_COPY_SEND, 0, 0, 0);
+    msg.Head.msgh_id = 1336;
+    
+    msg.Head.msgh_remote_port = 0; //this one gets overwritten with exception port!
+    
+    msg.Head.msgh_local_port = MACH_PORT_NULL;
+    msg.Head.msgh_size = sizeof(msg); //a bit larger than really neccessary, but who cares
+    msg.msgh_body.msgh_descriptor_count = 1;
+    
+    msg.thread.name = 0; //this will be overwritten with a newly allocated port
+    msg.thread.disposition = MACH_MSG_TYPE_COPY_SEND;
+    msg.thread.type = MACH_MSG_PORT_DESCRIPTOR;
+    
+    //move over msg
+    primitiveWrite(remoteMsg,&msg,sizeof(msg));
+    
+    //fill remote_port with remote tasks exception port
+    assureMachclean(callfunc((void*)thread_get_exception_ports,{(uint64_t)remoteThreadPort, (uint64_t)EXC_MASK_ALL, (uint64_t)masks, (uint64_t)masksCnt, (uint64_t)&remoteMsg->Head.msgh_remote_port, (uint64_t)old_behaviors, (uint64_t)old_flavors}));
+    
+    primitiveRead(&remoteMsg->Head.msgh_remote_port, &remoteExcetionHandlerPort, sizeof(remoteExcetionHandlerPort));
+
+    if (!remoteExcetionHandlerPort) {
+        //thread exception handler not set, it's probably the task exception handler then
+        //i was told mach_task_self_ is 0x103 in every process
+        assureMachclean(callfunc((void*)task_get_exception_ports,{(uint64_t)mach_task_self_, (uint64_t)EXC_MASK_ALL, (uint64_t)masks, (uint64_t)masksCnt, (uint64_t)&remoteMsg->Head.msgh_remote_port, (uint64_t)old_behaviors, (uint64_t)old_flavors}));
+        primitiveRead(&remoteMsg->Head.msgh_remote_port, &remoteExcetionHandlerPort, sizeof(remoteExcetionHandlerPort));
+    }
+    assure(remoteExcetionHandlerPort);
+    
+    //make sure fileds weren't overwritten by last call
+    primitiveWrite(&remoteMsg->Head.msgh_local_port,&msg.Head.msgh_local_port,sizeof(msg)-(sizeof(mach_msg_bits_t)+sizeof(mach_msg_size_t)+sizeof(mach_port_t)));
+    
+    //i was told mach_task_self_ is 0x103 in every process
+    assureMachclean(callfunc((void*)mach_port_allocate,{(uint64_t)mach_task_self_, (uint64_t)MACH_PORT_RIGHT_RECEIVE, (uint64_t)&remoteMsg->thread.name}));
+
+    
+    //send mach message!
+    
+    //this call will throw, because we will first receive our mach message and afterwards the exception message will be queued
+    try {
+        ret = (kern_return_t)callfunc((void*)mach_msg, {(uint64_t)remoteMsg,MACH_SEND_MSG|MACH_MSG_OPTION_NONE,msg.Head.msgh_size, 0, MACH_PORT_NULL,MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL});
+    } catch (TKexception &e) {
+        //all good, this was expected
+    }
+    
+    //if this is assure fails, it means we failed to send our mach message :(
+    assure(_emsg.head.msgh_id == 1336);
+    
+    //this is the remote name of the remote port we allocated
+    remoteListenerPort = ((exception_raise_request*)&_emsg)->thread.name;
+    
+    //fix up our call primitive by receiving the pending exception message
+    assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
+
+    
+    /*
+     remote: add send right
+     */
+    assureMachclean(callfunc((void*)mach_port_insert_right,{(uint64_t)mach_task_self_, (uint64_t)remoteListenerPort, (uint64_t)remoteListenerPort, (uint64_t)MACH_MSG_TYPE_MAKE_SEND}));
+
+    /*
+     remote: send port send right here
+     */
+    
+    //construct mach msg locally (this time we send a send right to our task)
+    msg.Head.msgh_bits = MACH_MSGH_BITS_SET(MACH_MSG_TYPE_COPY_SEND, 0, 0, MACH_MSGH_BITS_COMPLEX);
+    msg.Head.msgh_id = 1337;
+    
+    msg.Head.msgh_remote_port = remoteExcetionHandlerPort;
+    
+    msg.Head.msgh_local_port = MACH_PORT_NULL;
+    msg.Head.msgh_size = sizeof(msg); //a bit larger than really neccessary, but who cares
+    msg.msgh_body.msgh_descriptor_count = 1;
+    
+    msg.thread.name = remoteListenerPort; //send over a port where we can send from local and receive on remote
+    msg.thread.disposition = MACH_MSG_TYPE_COPY_SEND;
+    msg.thread.type = MACH_MSG_PORT_DESCRIPTOR;
+    
+    //move over msg
+    primitiveWrite(remoteMsg,&msg,sizeof(msg));
+    
+    //send mach message!
+    //this call will throw, because we will first receive our mach message and afterwards the exception message will be queued
+    try {
+        ret = (kern_return_t)callfunc((void*)mach_msg, {(uint64_t)remoteMsg,MACH_SEND_MSG|MACH_MSG_OPTION_NONE,msg.Head.msgh_size, 0, MACH_PORT_NULL,MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL});
+    } catch (TKexception &e) {
+        //all good, this was expected
+    }
+    
+    //if this is assure fails, it means we failed to send our mach message :(
+    assure(_emsg.head.msgh_id == 1337);
+
+    
+    //safe the port we will send our task port to
+    localSenderPort = ((exception_raise_request*)&_emsg)->thread.name;
+    
+    //fix up our call primitive by receiving the pending exception message
+    assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
+
+    /*
+     //local: send over own task port
+     */
+    
+    //construct another mach msg
+    msg.Head.msgh_bits = MACH_MSGH_BITS_SET(MACH_MSG_TYPE_COPY_SEND, 0, 0, MACH_MSGH_BITS_COMPLEX);
+    msg.Head.msgh_id = 1338;
+    
+    msg.Head.msgh_remote_port = localSenderPort; //this time we send to the remote process
+    msg.Head.msgh_local_port = MACH_PORT_NULL;
+    msg.Head.msgh_size = sizeof(msg); //a bit larger than really neccessary, but who cares
+    msg.msgh_body.msgh_descriptor_count = 1;
+    
+    msg.thread.name = mach_task_self(); //let the remote process overtake me
+    msg.thread.disposition = MACH_MSG_TYPE_COPY_SEND;
+    msg.thread.type = MACH_MSG_PORT_DESCRIPTOR;
+    
+    //send over our task port
+    assureMach(mach_msg((mach_msg_header_t*)&msg,MACH_SEND_MSG|MACH_MSG_OPTION_NONE, sizeof(msg), 0, MACH_PORT_NULL,MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL));
+
+    
+    /*
+     //remote: receive msg on port
+     */
+    
+    //no clue what's up with mach_msg and the size field o.O
+    assureMach(callfunc((void*)mach_msg, {(uint64_t)remoteMsg, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(msg)+sizeof(msg.Head), remoteListenerPort, 0, MACH_PORT_NULL}));
+
+    /*
+     //remote: send back remote name for local task
+     */
+
+    /*
+     We want to read the data which is stored in the mach message we just sent over.
+     We can do that by "switching off MACH_MSGH_BITS_COMPLEX" and send the raw data back
+     */
+    
+    
+    //construct yet another mach msg
+    msg.Head.msgh_bits = MACH_MSGH_BITS_SET(MACH_MSG_TYPE_COPY_SEND, 0, 0, 0);
+    msg.Head.msgh_id = 1339;
+    
+    msg.Head.msgh_remote_port = remoteExcetionHandlerPort;
+    msg.Head.msgh_local_port = MACH_PORT_NULL;
+    msg.Head.msgh_size = sizeof(msg); //a bit larger than really neccessary, but who cares
+    
+    //move over just msg header
+    primitiveWrite(remoteMsg,&msg,sizeof(msg.Head));
+
+    //this call will throw, because we will first receive our mach message and afterwards the exception message will be queued
+    try {
+        ret = (kern_return_t)callfunc((void*)mach_msg, {(uint64_t)remoteMsg,MACH_SEND_MSG|MACH_MSG_OPTION_NONE,msg.Head.msgh_size, 0, MACH_PORT_NULL,MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL});
+    } catch (TKexception &e) {
+        //all good, this was expected
+    }
+    
+    //if this is assure fails, it means we failed to send our mach message :(
+    assure(_emsg.head.msgh_id == 1339);
+    
+    /*
+     //local: store remote portname of local task locally
+     */
+    
+    _remoteSelf = ((exception_raise_request*)&_emsg)->thread.name;
+    
+    //fix up our call primitive by receiving the pending exception message
+    assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
+
+    
+    clean(false);
+#undef allocScratchSpace
+}
+
+
+
+void takeover::readMem(void *remote, void *outAddr, size_t size){
     mach_vm_size_t out = size;
-    assureMach(mach_vm_read_overwrite(_target, (mach_vm_address_t)remote , (mach_vm_size_t)size, (mach_vm_address_t) outAddr, &out));
+    if (_target) {
+        assureMach(mach_vm_read_overwrite(_target, (mach_vm_address_t)remote , (mach_vm_size_t)size, (mach_vm_address_t) outAddr, &out));
+    }else{
+        assure(_remoteSelf);
+        assureMach(callfunc((void*)mach_vm_write,{(uint64_t)_remoteSelf, (uint64_t)outAddr, (uint64_t)remote, (uint64_t)size}));
+    }
 }
-void takeover::writeMem(void *remote, size_t size, const void *inAddr){
-    assureMach(mach_vm_write(_target, (mach_vm_address_t)remote, (vm_offset_t)inAddr, (mach_msg_type_number_t)size));
+void takeover::writeMem(void *remote, const void *inAddr, size_t size){
+    if (_target) {
+        assureMach(mach_vm_write(_target, (mach_vm_address_t)remote, (vm_offset_t)inAddr, (mach_msg_type_number_t)size));
+    }else{
+        assure(_remoteSelf);
+        assure(_remoteScratchSpace && _remoteScratchSpaceSize > 8);
+        assureMach(callfunc((void*)mach_vm_read_overwrite,{(uint64_t)_remoteSelf, (uint64_t)inAddr, (uint64_t)size, (uint64_t)remote, (uint64_t)_remoteScratchSpace}));
+    }
 }
 void *takeover::allocMem(size_t size){
-    void *ret = 0;
-    assureMach(mach_vm_allocate(_target, (mach_vm_address_t*)&ret, size, VM_FLAGS_ANYWHERE));
-    assureMach(mach_vm_protect(_target, (mach_vm_address_t)ret, size, 1, VM_PROT_READ | VM_PROT_WRITE));
-    return ret;
+    if (_target) {
+        void *ret = 0;
+        assureMach(mach_vm_allocate(_target, (mach_vm_address_t*)&ret, size, VM_FLAGS_ANYWHERE));
+        assureMach(mach_vm_protect(_target, (mach_vm_address_t)ret, size, 1, VM_PROT_READ | VM_PROT_WRITE));
+        return ret;
+    }else{
+        //overtakeme style
+        void *ret = 0;
+        assure(_remoteScratchSpace && _remoteScratchSpaceSize > 8);
+        
+        //i was told mach_task_self_ is 0x103 in every process
+        assureMach(callfunc((void*)mach_vm_allocate, {(uint64_t)mach_task_self_,(uint64_t)_remoteScratchSpace,(uint64_t)size,(uint64_t)VM_FLAGS_ANYWHERE}));
+        primitiveRead(_remoteScratchSpace, &ret, sizeof(ret));
+        assureMach(callfunc((void*)mach_vm_protect,{(uint64_t)mach_task_self_, (uint64_t)ret, (uint64_t)size, (uint64_t)1, (uint64_t)(VM_PROT_READ | VM_PROT_WRITE)}));
+        return ret;
+    }
 }
 void takeover::deallocMem(void *remote, size_t size){
-    assureMach(mach_vm_deallocate(_target, (mach_vm_address_t)remote, (mach_vm_size_t)size));
+    if (_target) {
+        assureMach(mach_vm_deallocate(_target, (mach_vm_address_t)remote, (mach_vm_size_t)size));
+    }else{
+        //overtakeme style
+        //i was told mach_task_self_ is 0x103 in every process
+        assureMach(callfunc((void*)mach_vm_deallocate,{(uint64_t)mach_task_self_, (uint64_t)remote, (uint64_t)size}));
+    }
 }
 
 //noDrop means don't drop send right if we could
 std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
     kern_return_t err = 0;
     std::pair<int, kern_return_t> gerr = {0,0};
+    if (_remoteScratchSpace) {
+        try{
+            deallocMem(_remoteScratchSpace, _remoteScratchSpaceSize);
+        }catch(TKexception &e){
+            error("deinit: dealloc exceptio: line=%d code=%lld what=%s",__LINE__,(uint64_t)e.code(),e.what());
+        }
+        _remoteScratchSpace = NULL;
+        _remoteScratchSpaceSize = 0;
+    }
+    
     if (_marionetteThread) {
         void *func_pthread_exit = NULL;
-        arm_thread_state64_t state = {0};
-        mach_msg_type_number_t count = ARM_THREAD_STATE64_COUNT;
+        arm_thread_state64_t *state = (arm_thread_state64_t*)(_emsg.data+0x24);
         kern_return_t ret = 0;
         
         func_pthread_exit  = dlsym(RTLD_NEXT, "pthread_exit");
-        ret = thread_get_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, &count);
         
         if (func_pthread_exit && !ret && !_isFakeThread) {
 #if !__DARWIN_OPAQUE_ARM_THREAD_STATE64
-            state.__pc = (uint64_t)func_pthread_exit;
+            state->__pc = (uint64_t)func_pthread_exit;
 #else
-            state.__opaque_pc = func_pthread_exit;
+            state->__opaque_pc = func_pthread_exit;
 #endif
-            state.__x[0] = 0;
+            state->__x[0] = 0;
             
-            //clean terminate of kidnapped thread
-            err = thread_set_state(_marionetteThread, ARM_THREAD_STATE64, (thread_state_t)&state, ARM_THREAD_STATE64_COUNT);
-            if (err) {
-                error("deinit: line=%d err=%llx s=%s",__LINE__,(uint64_t)err,mach_error_string(err));
-                if (!gerr.first) {gerr.first=__LINE__; gerr.second = err;}
-            }
-            //resume
-            exception_raise_reply reply = {0};
+            //clean terminate of kidnapped thread and resume
+            exception_raise_state_reply reply = {};
             exception_raise_request* req = (exception_raise_request*)&_emsg;
-            reply.Head.msgh_bits = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(req->Head.msgh_bits), 0);
-            reply.Head.msgh_size = sizeof(reply);
-            reply.Head.msgh_remote_port = req->Head.msgh_remote_port;
+            
+            reply.Head.msgh_bits = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(_emsg.head.msgh_bits), 0);
+            reply.new_stateCnt = ARM_THREAD_STATE64_COUNT;
+            reply.Head.msgh_remote_port = _emsg.head.msgh_remote_port;
             reply.Head.msgh_local_port = MACH_PORT_NULL;
-            reply.Head.msgh_id = req->Head.msgh_id + 100;
+            reply.Head.msgh_id = _emsg.head.msgh_id + 100;
             
             reply.NDR = req->NDR;
             reply.RetCode = KERN_SUCCESS;
+            reply.flavor = ARM_THREAD_STATE64;
+            memcpy(reply.new_state, state, sizeof(arm_thread_state64_t));
+            
+            reply.Head.msgh_size = (mach_msg_size_t)(sizeof(exception_raise_state_reply) - 2456) + (((4 * reply.new_stateCnt))); //straight from MIG
             
             //resume
-            err = mach_msg(&reply.Head, MACH_SEND_MSG|MACH_MSG_OPTION_NONE, (mach_msg_size_t)sizeof(reply), 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
+            err = mach_msg(&reply.Head, MACH_SEND_MSG|MACH_MSG_OPTION_NONE, (mach_msg_size_t)reply.Head.msgh_size, 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
             if (err) {
                 error("deinit: line=%d err=%llx s=%s",__LINE__,(uint64_t)err,mach_error_string(err));
                 if (!gerr.first) {gerr.first=__LINE__; gerr.second = err;}

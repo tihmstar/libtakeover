@@ -42,22 +42,22 @@ void *loop(void*a){
     
     printf("pid=%d\n",getpid());
 
-
-    tihmstar::takeover mytk(mach_task_self());
-    mytk.kidnapThread();
+    {
+        tihmstar::takeover mytk(mach_task_self());
+        mytk.kidnapThread();
+        
+        char str[] = "/usr/lib/libjailbreak.dylib";
+        void *strptr = mytk.allocMem(sizeof(str));
+        mytk.writeMem(strptr, str, sizeof(str));
+        
+        void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(uint64_t)strptr,(uint64_t)RTLD_NOW});
+        printf("dlopen ok\n");
+        
+        
+        void *sdlopen = dlsym(RTLD_NEXT, "dlopen");
+        void *rdlopen = (void*)&dlopen;
+    }
     
-    char str[] = "/usr/lib/libjailbreak.dylib";
-    void *strptr = mytk.allocMem(sizeof(str));
-    mytk.writeMem(strptr, sizeof(str), str);
-
-    void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(uint64_t)strptr,(uint64_t)RTLD_NOW});
-    printf("dlopen ok\n");
-
-    sleep(1);
-
-
-    void *sdlopen = dlsym(RTLD_NEXT, "dlopen");
-    void *rdlopen = (void*)&dlopen;
     
     
     printf("done");

@@ -69,7 +69,7 @@ void inject(uint32_t pid, const char *dylib){
     assure(dylibPathAddr = mytk.allocMem(0x100 + strlen(dylib) + 1));
     printf("Dylib Path Addr: 0x%llx\n", 0x100 + (uint64_t)dylibPathAddr);
 
-    mytk.writeMem((void *)(0x100 + (uint64_t)dylibPathAddr), strlen(dylib) + 1, dylib);
+    mytk.writeMem((void *)(0x100 + (uint64_t)dylibPathAddr), dylib, strlen(dylib) + 1);
 
     printf("Calling dlopen...\n");
     rt = mytk.callfunc((void *)&dlopen, {0x100 + (uint64_t)dylibPathAddr, 2});
@@ -83,7 +83,7 @@ void inject(uint32_t pid, const char *dylib){
         uint64_t len = mytk.callfunc((void *)&strlen, {error});
         char *local_cstring = (char *)malloc(len + 1);
         
-        mytk.readMem((void *)error, len + 1, local_cstring);
+        mytk.readMem((void *)error, local_cstring, len + 1);
         
         printf("Error is %s\n", local_cstring);
         free(local_cstring);

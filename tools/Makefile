@@ -194,7 +194,7 @@ CC = cc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -arch arm64 -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS12.1.sdk
 CPP = cc -E
-CPPFLAGS =  -std=c++11 -O3 -D VERSION_COMMIT_COUNT=\"9\" -D VERSION_COMMIT_SHA=\"2cb1752b73d46f2b0dba1a273af205a00b0f4e93\" -D EXPECTIONNAME=TKexception
+CPPFLAGS =  -std=c++11 -g -D VERSION_COMMIT_COUNT=\"13\" -D VERSION_COMMIT_SHA=\"a61e79ff99f55d8c616a6c4cc4f111bbbbcec4c2\" -D EXPECTIONNAME=TKexception
 CXX = g++
 CXXCPP = g++ -E
 CXXDEPMODE = depmode=gcc3
@@ -238,17 +238,17 @@ OTOOL64 = :
 PACKAGE = libgrabkernel
 PACKAGE_BUGREPORT = tihmstar@gmail.com
 PACKAGE_NAME = libgrabkernel
-PACKAGE_STRING = libgrabkernel 9
+PACKAGE_STRING = libgrabkernel 13
 PACKAGE_TARNAME = libgrabkernel
 PACKAGE_URL = 
-PACKAGE_VERSION = 9
+PACKAGE_VERSION = 13
 PATH_SEPARATOR = :
 RANLIB = ranlib
 SED = /usr/bin/sed
 SET_MAKE = 
 SHELL = /bin/sh
 STRIP = strip
-VERSION = 9
+VERSION = 13
 abs_builddir = /Users/tihmstar/dev/libtakeover/tools
 abs_srcdir = /Users/tihmstar/dev/libtakeover/tools
 abs_top_builddir = /Users/tihmstar/dev/libtakeover
