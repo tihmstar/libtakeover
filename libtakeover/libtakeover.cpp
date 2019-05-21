@@ -552,45 +552,11 @@ void takeover::overtakeMe(){
 
     /*
      //remote: send back remote name for local task
-     */
-
-    /*
-     We want to read the data which is stored in the mach message we just sent over.
-     We can do that by "switching off MACH_MSGH_BITS_COMPLEX" and send the raw data back
-     */
-    
-    
-    //construct yet another mach msg
-    msg.Head.msgh_bits = MACH_MSGH_BITS_SET(MACH_MSG_TYPE_COPY_SEND, 0, 0, 0);
-    msg.Head.msgh_id = 1339;
-    
-    msg.Head.msgh_remote_port = remoteExcetionHandlerPort;
-    msg.Head.msgh_local_port = MACH_PORT_NULL;
-    msg.Head.msgh_size = sizeof(msg); //a bit larger than really neccessary, but who cares
-    
-    //move over just msg header
-    primitiveWrite(remoteMsg,&msg,sizeof(msg.Head));
-
-    //this call will throw, because we will first receive our mach message and afterwards the exception message will be queued
-    try {
-        ret = (kern_return_t)callfunc((void*)mach_msg, {(uint64_t)remoteMsg,MACH_SEND_MSG|MACH_MSG_OPTION_NONE,msg.Head.msgh_size, 0, MACH_PORT_NULL,MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL});
-    } catch (TKexception &e) {
-        //all good, this was expected
-    }
-    
-    //if this is assure fails, it means we failed to send our mach message :(
-    assure(_emsg.head.msgh_id == 1339);
-    
-    /*
      //local: store remote portname of local task locally
      */
     
-    _remoteSelf = ((exception_raise_request*)&_emsg)->thread.name;
-    
-    //fix up our call primitive by receiving the pending exception message
-    assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
-
-    
+    primitiveRead(&remoteMsg->thread.name, &_remoteSelf, sizeof(_remoteSelf));
+        
     clean(false);
 #undef allocScratchSpace
 }
