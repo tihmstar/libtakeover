@@ -20,7 +20,7 @@ AM_PROG_LIBTOOL
 AM_INIT_AUTOMAKE
 
 
-CPPFLAGS+=" -std=c++11 -O3"
+CPPFLAGS+=" -std=c++11 -g"
 
 CPPFLAGS+=" -D VERSION_COMMIT_COUNT=\\\"$(git rev-list --count HEAD | tr -d '\n')\\\""
 CPPFLAGS+=" -D VERSION_COMMIT_SHA=\\\"$(git rev-parse HEAD | tr -d '\n')\\\""

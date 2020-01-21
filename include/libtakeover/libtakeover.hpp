@@ -13,6 +13,12 @@
 #include <vector>
 #include <libtakeover/TKexception.hpp>
 
+#if defined (__arm64__)
+    typedef uint64_t cpuword_t;
+#elif defined (__arm__)
+    typedef uint32_t cpuword_t;
+#endif
+
 namespace tihmstar {
     typedef struct {
         mach_msg_header_t head;
@@ -46,7 +52,7 @@ namespace tihmstar {
         
         static takeover takeoverWithExceptionHandler(mach_port_t exceptionHandler);
         
-        uint64_t callfunc(void *addr, const std::vector<uint64_t> &x);
+        cpuword_t callfunc(void *addr, const std::vector<cpuword_t> &x);
         
         void kidnapThread();
         void overtakeMe();

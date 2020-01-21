@@ -40,17 +40,29 @@ void *loop(void*a){
 - (void)viewDidLoad {
     [super viewDidLoad];
     
+    pthread_t dsa;
+    pthread_t *asd = &dsa;
+
+//    pthread_create(asd, NULL, loop, (void*)0x61718191);
+    
+    lol(0x11111111,0x22222222,0x33333333,0x44444444,0x55555555,0x66666666,0x77777777,0x88888888);
+    
     printf("pid=%d\n",getpid());
 
     {
-        tihmstar::takeover mytk(mach_task_self());
+        tihmstar::takeover mytk(mach_task_self());        
+
+
         mytk.kidnapThread();
         
+
+        mytk.callfunc((void*)lol, {0x10101010,0x20202020,0x30303030,0x40404040,0x50505050,0x60606060,0x70707070,0x80808080});
+
         char str[] = "/usr/lib/libjailbreak.dylib";
         void *strptr = mytk.allocMem(sizeof(str));
         mytk.writeMem(strptr, str, sizeof(str));
         
-        void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(uint64_t)strptr,(uint64_t)RTLD_NOW});
+        void *dsa = (void*)mytk.callfunc(dlsym(RTLD_NEXT, "dlopen"), {(cpuword_t)strptr,(uint64_t)RTLD_NOW});
         printf("dlopen ok\n");
         
         
