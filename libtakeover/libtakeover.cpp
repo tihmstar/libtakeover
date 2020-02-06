@@ -118,11 +118,10 @@ takeover::takeover(mach_port_t target)
 
     //setup stack
     assureclean(localStack = (cpuword_t *)malloc(_remoteStackSize));
+    stackpointer = ((_remoteStackSize/2) / sizeof(cpuword_t))-1; //leave enough space for stack args
 #if defined (__arm64__)
-    stackpointer = (_remoteStackSize / 8)-1;
     localStack[stackpointer--] = 0x4142434445464748; //magic end (x86 legacy, we don't need this for ARM64, do we?)
 #elif defined (__arm__)
-    stackpointer = ((_remoteStackSize/2) / 4); //leave enough space for stack args
     localStack[stackpointer--] = 0x41424344; //magic end (x86 legacy, we don't need this for ARM64, do we?)
 #endif
 
@@ -148,15 +147,10 @@ takeover::takeover(mach_port_t target)
     
 #if defined (__arm64__)
     state.__x[0] = (cpuword_t)_remoteStack;
-#   if !__DARWIN_OPAQUE_MY_THREAD_STATE
-    state.__lr = 0x7171717171717171;        //actual magic end
-    assureclean(state.__pc = (cpuword_t)dlsym(RTLD_NEXT, "thread_start"));
-    state.__sp = (cpuword_t)(_remoteStack + stackpointer*sizeof(cpuword_t));
-#   else
-    state.__opaque_lr = (void *)0x7171717171717171;        //actual magic end
-    assureclean(state.__opaque_pc = dlsym(RTLD_NEXT, "thread_start"));
-    state.__opaque_sp = (void *)(_remoteStack + stackpointer*sizeof(cpuword_t));
-#   endif
+    arm_thread_state64_set_lr_fptr(state,(void*)0x7171717171717171);
+    arm_thread_state64_set_pc_fptr(state,dlsym(RTLD_NEXT, "thread_start"));
+    assureclean(arm_thread_state64_get_pc(state));
+    arm_thread_state64_set_sp(state,_remoteStack + stackpointer*sizeof(cpuword_t));
 #elif defined (__arm__)
     state.__r[0] = (cpuword_t)_remoteStack;
     state.__r[1] = (cpuword_t)_marionetteThread;
@@ -168,6 +162,14 @@ takeover::takeover(mach_port_t target)
     assureclean(state.__pc = (cpuword_t)dlsym(RTLD_NEXT, "thread_start"));
     state.__sp = (cpuword_t)(_remoteStack + stackpointer*sizeof(cpuword_t));
 #endif
+    
+    if (dlsym(RTLD_NEXT, "pthread_create_from_mach_thread")){
+#if defined (__arm64__)
+        arm_thread_state64_set_pc_fptr(state,(void*)0x4141414141414141);
+#elif defined (__arm__)
+        state.__pc = 0x41414141;
+#endif
+    }
 
     assureMachclean(thread_set_state(_marionetteThread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
 
@@ -185,6 +187,11 @@ takeover::takeover(mach_port_t target)
     assureMachclean(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
     
     finalClean();
+    
+    //if we have pthread_create_from_mach_thread, we can do things much cleaner
+    if (dlsym(RTLD_NEXT, "pthread_create_from_mach_thread")){
+        kidnapThread();
+    }
 }
 
 takeover::takeover(takeover &&tk)
@@ -212,14 +219,15 @@ takeover takeover::takeoverWithExceptionHandler(mach_port_t exceptionHandler){
 cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     my_thread_state_t *state = (my_thread_state_t*)(_emsg.data+0x24);
     cpuword_t lrmagic = 0x71717171;
-        
-#if !__DARWIN_OPAQUE_MY_THREAD_STATE
-    state->__lr = lrmagic;
-    state->__pc = (cpuword_t)addr;
+    
+#if defined (__arm64__)
+    arm_thread_state64_set_pc_fptr(*state,(void*)addr);
+    arm_thread_state64_set_lr_fptr(*state,(void*)lrmagic);
 #else
-    state.__opaque_lr = (void *)lrmagic;
-    state.__opaque_pc = (void *)addr;
+    state->__lr = (void *)lrmagic;
+    state->__pc = (cpuword_t)addr;
 #endif
+    
     
 #if defined (__arm64__)
     retassure(x.size() <= 29,"only up to 29 arguments allowed");
@@ -257,7 +265,7 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
 
     reply.NDR = req->NDR;
     reply.RetCode = KERN_SUCCESS;
-    reply.flavor = ARM_THREAD_STATE;
+    reply.flavor = MY_THREAD_STATE;
     memcpy(reply.new_state, state, sizeof(my_thread_state_t));
     
     reply.Head.msgh_size = (mach_msg_size_t)(sizeof(exception_raise_state_reply) - 2456) + (((4 * reply.new_stateCnt))); //straight from MIG
@@ -270,10 +278,10 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     
     //get result (implicit through receiving mach_msg)
     
-#if !__DARWIN_OPAQUE_MY_THREAD_STATE
-	assure((state->__pc & (~1)) == (lrmagic & (~1)));
+#if defined (__arm64__)
+    assure(((cpuword_t)arm_thread_state64_get_pc(*state) & 0x1FFFFFFFF) == lrmagic);
 #else
-	assure(((cpuword_t)state->__opaque_pc & 0x1FFFFFFFF) == lrmagic);
+    assure((state->__pc & (~1)) == (lrmagic & (~1)));
 #endif
     
 #if defined (__arm64__)
@@ -294,6 +302,7 @@ void takeover::kidnapThread(){
     void *func_mutex_unlock   = NULL;
     void *func_pthread_create = NULL;
     void *func_pthread_exit   = NULL;
+    void *pt_from_mt = NULL;
     cpuword_t ret = 0;
     bool lockIsInited = false;
     thread_array_t threadList = 0;
@@ -343,11 +352,23 @@ void takeover::kidnapThread(){
     assureclean(!ret);
     lockIsInited = true;
     
-    assureCatchClean(ret = callfunc(func_mutex_lock, {(cpuword_t)mem_mutex}));
-    assureclean(!ret);
+    if ((pt_from_mt = dlsym(RTLD_NEXT, "pthread_create_from_mach_thread"))) {
+        //this spawns thread which locks mutex and finishes
+        assureCatchClean(ret = callfunc(pt_from_mt, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_lock, (cpuword_t)mem_mutex}));
+        assureclean(!ret);
+        
+        usleep(420); //wait for new thread to spawn
 
-    assureCatchClean(ret = callfunc(func_pthread_create, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock,(cpuword_t)mem_mutex}));
-    assureclean(!ret);
+        //this spawns thread which locks mutex and stays, we will kidnap this one
+        assureCatchClean(ret = callfunc(pt_from_mt, {(cpuword_t)mem_thread, NULL, (cpuword_t)func_mutex_lock, (cpuword_t)mem_mutex}));
+        assureclean(!ret);
+    }else{
+        assureCatchClean(ret = callfunc(func_mutex_lock, {(cpuword_t)mem_mutex}));
+        assureclean(!ret);
+
+        assureCatchClean(ret = callfunc(func_pthread_create, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock,(cpuword_t)mem_mutex}));
+        assureclean(!ret);
+    }
 
     usleep(420); //wait for new thread to spawn
     //find new thread
@@ -378,11 +399,7 @@ void takeover::kidnapThread(){
 
     
 #if defined (__arm64__)
-#   if !__DARWIN_OPAQUE_MY_THREAD_STATE
-    state.__lr = 0x6161616161616161; //magic end
-#   else
-    state.__opaque_lr = (void *)0x6161616161616161; //magic end
-#   endif
+    arm_thread_state64_set_lr_fptr(state,(void*)0x6161616161616161);
 #elif defined (__arm__)
     state.__lr = 0x61616161; //magic end
 #endif
@@ -391,8 +408,17 @@ void takeover::kidnapThread(){
     //set magic end
     assureMachclean(thread_set_state(kidnapped_thread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
 
-    //unlock mutex and let thread fall in magic
-    assureCatchClean(ret = callfunc(func_mutex_unlock, {(cpuword_t)mem_mutex}));
+    if (pt_from_mt) {
+        //this new thread will finish again
+        assureCatchClean(ret = callfunc(pt_from_mt, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock, (cpuword_t)mem_mutex}));
+        assureclean(!ret);
+        
+        usleep(420); //wait for new thread to spawn
+    }else{
+        //unlock mutex and let thread fall in magic
+        assureCatchClean(ret = callfunc(func_mutex_unlock, {(cpuword_t)mem_mutex}));
+    }
+        
     
     //kill marionettThread
     deinit(true);
@@ -701,16 +727,12 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
         func_pthread_exit  = dlsym(RTLD_NEXT, "pthread_exit");
         
         if (func_pthread_exit && !ret && !_isFakeThread) {
-#if !__DARWIN_OPAQUE_MY_THREAD_STATE
-            state->__pc = (cpuword_t)func_pthread_exit;
-#else
-            state->__opaque_pc = func_pthread_exit;
-#endif
-            
 #if defined (__arm64__)
             state->__x[0] = 0;
+            arm_thread_state64_set_pc_fptr(*state,func_pthread_exit);
 #elif defined (__arm__)
             state->__r[0] = 0;
+            state->__pc = (cpuword_t)func_pthread_exit;
 #endif
             
             //clean terminate of kidnapped thread and resume

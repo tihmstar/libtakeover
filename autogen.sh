@@ -13,9 +13,9 @@ automake --add-missing
 
 
 SYSROOT="$(xcrun --show-sdk-path --sdk iphoneos)"
-export CFLAGS+="-arch arm64 -isysroot $SYSROOT"
-export CXXFLAGS+="-arch arm64 -isysroot $SYSROOT"
-export OBJCFLAGS+="-arch arm64 -isysroot $SYSROOT"
+export CFLAGS+="-arch arm64 -arch armv7 -isysroot $SYSROOT"
+export CXXFLAGS+="-arch arm64 -arch armv7 -isysroot $SYSROOT"
+export OBJCFLAGS+="-arch arm64 -arch armv7 -isysroot $SYSROOT"
 export LDFLAGS+=""
 
 
@@ -32,5 +32,3 @@ for SUB in $SUBDIRS; do
 done
 
 ./configure $CONFIGURE_FLAGS
-
-

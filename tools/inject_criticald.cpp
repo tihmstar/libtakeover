@@ -34,7 +34,7 @@ void platformizeme() {
 void inject(uint32_t pid, const char *dylib){
     task_t remoteTask = MACH_PORT_NULL;
     kern_return_t ret = 0;
-    uint64_t rt = 0;
+    cpuword_t rt = 0;
     void *dylibPathAddr = NULL;
     
     doassure(!(ret = task_for_pid(mach_task_self(), pid, &remoteTask)),[pid]{
@@ -67,20 +67,20 @@ void inject(uint32_t pid, const char *dylib){
     printf("ok!\n");
 
     assure(dylibPathAddr = mytk.allocMem(0x100 + strlen(dylib) + 1));
-    printf("Dylib Path Addr: 0x%llx\n", 0x100 + (uint64_t)dylibPathAddr);
+    printf("Dylib Path Addr: 0x%llx\n", 0x100 + (cpuword_t)dylibPathAddr);
 
-    mytk.writeMem((void *)(0x100 + (uint64_t)dylibPathAddr), dylib, strlen(dylib) + 1);
+    mytk.writeMem((void *)(0x100 + (cpuword_t)dylibPathAddr), dylib, strlen(dylib) + 1);
 
     printf("Calling dlopen...\n");
-    rt = mytk.callfunc((void *)&dlopen, {0x100 + (uint64_t)dylibPathAddr, 2});
+    rt = mytk.callfunc((void *)&dlopen, {0x100 + (cpuword_t)dylibPathAddr, 2});
 
     mytk.deallocMem(dylibPathAddr, 0x100 + strlen(dylib) + 1);
 
     printf("dlopen returned 0x%08llx\n",rt);
     
-    if (uint64_t error = mytk.callfunc((void *)&dlerror, {})){
+    if (cpuword_t error = mytk.callfunc((void *)&dlerror, {})){
         
-        uint64_t len = mytk.callfunc((void *)&strlen, {error});
+        cpuword_t len = mytk.callfunc((void *)&strlen, {error});
         char *local_cstring = (char *)malloc(len + 1);
         
         mytk.readMem((void *)error, local_cstring, len + 1);
