@@ -224,7 +224,7 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     arm_thread_state64_set_pc_fptr(*state,(void*)addr);
     arm_thread_state64_set_lr_fptr(*state,(void*)lrmagic);
 #else
-    state->__lr = (void *)lrmagic;
+    state->__lr = (uint32_t)lrmagic;
     state->__pc = (cpuword_t)addr;
 #endif
     
