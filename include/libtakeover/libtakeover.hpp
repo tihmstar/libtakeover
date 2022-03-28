@@ -12,6 +12,7 @@
 #include <mach/mach.h>
 #include <vector>
 #include <libtakeover/TKexception.hpp>
+#include <functional>
 
 #if defined (__arm64__)
     typedef uint64_t cpuword_t;
@@ -37,7 +38,7 @@ namespace tihmstar {
         mach_port_t _remoteSelf;
         void *_remoteScratchSpace;
         size_t _remoteScratchSpaceSize;
-
+        std::function<cpuword_t(cpuword_t ptr)> _signptr_cb;
         
         
         std::pair<int, kern_return_t>  deinit(bool noDrop = false);
@@ -46,13 +47,15 @@ namespace tihmstar {
         void primitiveRead(void *remote, void *outAddr, size_t size);
 
     public:
-        takeover(const mach_port_t target);
+        takeover(const mach_port_t target, std::function<cpuword_t(cpuword_t ptr)> signptr_cb = nullptr);
         takeover(const takeover &) = delete; //no copy constructor
         takeover(takeover &&); //move constructor
         
         static takeover takeoverWithExceptionHandler(mach_port_t exceptionHandler);
         
-        cpuword_t callfunc(void *addr, const std::vector<cpuword_t> &x);
+        void setSignptrCB(std::function<cpuword_t(cpuword_t ptr)> signptr_cb);
+        
+        cpuword_t callfunc(void *addr, const std::vector<cpuword_t> &xtr);
         
         void kidnapThread();
         void overtakeMe();

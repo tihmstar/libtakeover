@@ -8,7 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8765F92E2223191000A1FEC7 /* libtakeover.cpp */; };
-		876D8D11227C5D3900142E68 /* exception.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 876D8D10227C5D3900142E68 /* exception.cpp */; };
+		8769F10125ED7D0C00E0A1AA /* libgeneral.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8769F0FF25ED7BB400E0A1AA /* libgeneral.a */; };
 		87F284742218612600233A01 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284732218612600233A01 /* AppDelegate.m */; };
 		87F284772218612600233A01 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 87F284762218612600233A01 /* ViewController.mm */; };
 		87F2847C2218612700233A01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847B2218612700233A01 /* Assets.xcassets */; };
@@ -21,7 +21,7 @@
 		8765F92E2223191000A1FEC7 /* libtakeover.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
 		8765F92F2223191000A1FEC7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = libtakeover.hpp; path = ../include/libtakeover/libtakeover.hpp; sourceTree = "<group>"; };
 		8765F93622231BCD00A1FEC7 /* TKexception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TKexception.hpp; path = ../include/libtakeover/TKexception.hpp; sourceTree = "<group>"; };
-		876D8D10227C5D3900142E68 /* exception.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = exception.cpp; path = external/libgeneral/libgeneral/exception.cpp; sourceTree = SOURCE_ROOT; };
+		8769F0FF25ED7BB400E0A1AA /* libgeneral.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgeneral.a; path = ../../ios_buildroot/root/lib/libgeneral.a; sourceTree = "<group>"; };
 		87F2846F2218612600233A01 /* libtakeover.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = libtakeover.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		87F284722218612600233A01 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		87F284732218612600233A01 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -39,26 +39,19 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8769F10125ED7D0C00E0A1AA /* libgeneral.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		876D8D0E227C5D2900142E68 /* external */ = {
+		8769F0FE25ED7BB400E0A1AA /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				876D8D0F227C5D3000142E68 /* libgeneral */,
+				8769F0FF25ED7BB400E0A1AA /* libgeneral.a */,
 			);
-			path = external;
-			sourceTree = "<group>";
-		};
-		876D8D0F227C5D3000142E68 /* libgeneral */ = {
-			isa = PBXGroup;
-			children = (
-				876D8D10227C5D3900142E68 /* exception.cpp */,
-			);
-			path = libgeneral;
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		87F284662218612600233A01 = {
@@ -66,6 +59,7 @@
 			children = (
 				87F284712218612600233A01 /* libtakeover */,
 				87F284702218612600233A01 /* Products */,
+				8769F0FE25ED7BB400E0A1AA /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -80,7 +74,6 @@
 		87F284712218612600233A01 /* libtakeover */ = {
 			isa = PBXGroup;
 			children = (
-				876D8D0E227C5D2900142E68 /* external */,
 				87F284722218612600233A01 /* AppDelegate.h */,
 				87F284732218612600233A01 /* AppDelegate.m */,
 				8765F93622231BCD00A1FEC7 /* TKexception.hpp */,
@@ -171,7 +164,6 @@
 				8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */,
 				87F284822218612700233A01 /* main.m in Sources */,
 				87F284742218612600233A01 /* AppDelegate.m in Sources */,
-				876D8D11227C5D3900142E68 /* exception.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -317,16 +309,17 @@
 					arm64e,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = M7EX974CE7;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2H3GC964X8;
+				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 					"EXPECTIONNAME='TKexception'",
 				);
 				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/external/libgeneral/include",
+					/Users/tihmstar/ios_buildroot/root/usr/local/include,
 					"$(SRCROOT)/include",
 				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
@@ -335,9 +328,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = /Users/tihmstar/ios_buildroot/root/usr/local/staticlib;
 				PRODUCT_BUNDLE_IDENTIFIER = net.tihmstar.libtakeover;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = hasi;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -350,11 +344,12 @@
 					arm64e,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = M7EX974CE7;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 2H3GC964X8;
+				ENABLE_BITCODE = NO;
 				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/external/libgeneral/include",
+					/Users/tihmstar/ios_buildroot/root/usr/local/include,
 					"$(SRCROOT)/include",
 				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
@@ -363,9 +358,10 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = /Users/tihmstar/ios_buildroot/root/usr/local/staticlib;
 				PRODUCT_BUNDLE_IDENTIFIER = net.tihmstar.libtakeover;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = hasi;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

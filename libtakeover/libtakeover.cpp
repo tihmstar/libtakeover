@@ -12,6 +12,7 @@
 #include <dlfcn.h>
 #include <pthread/pthread.h>
 #include <stdlib.h>
+#include <libgeneral/macros.h>
 
 #include <unistd.h>
 
@@ -68,15 +69,15 @@ typedef struct {
 takeover::takeover()
     /* init member vars */
     :_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
-        _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0)
+    _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _signptr_cb{nullptr}
 {
     
 }
 
-takeover::takeover(mach_port_t target)
+takeover::takeover(mach_port_t target, std::function<cpuword_t(cpuword_t ptr)> signptr_cb)
     /* init member vars */
     :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
-        _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0)
+_isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _signptr_cb{signptr_cb}
 {
     
     /* setup local variables */
@@ -110,7 +111,7 @@ takeover::takeover(mach_port_t target)
             assureMachclean(err);
         }());
     }
-    
+
     //allocate remote stack
     assureMachclean(mach_vm_allocate(_target, &_remoteStack, _remoteStackSize, VM_FLAGS_ANYWHERE));
     assureMachclean(mach_vm_protect(_target, _remoteStack, _remoteStackSize, 1, VM_PROT_READ | VM_PROT_WRITE));
@@ -144,11 +145,16 @@ takeover::takeover(mach_port_t target)
     
     //setup thread state
     assureMachclean(thread_get_state(_marionetteThread, MY_THREAD_STATE, (thread_state_t)&state, &count));
-    
+   
+
 #if defined (__arm64__)
     state.__x[0] = (cpuword_t)_remoteStack;
-    arm_thread_state64_set_lr_fptr(state,(void*)0x7171717171717171);
-    arm_thread_state64_set_pc_fptr(state,dlsym(RTLD_NEXT, "thread_start"));
+    state.__x[30] = 0x7171717171717171; //LR
+    if (_signptr_cb) {
+        state.__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)dlsym(RTLD_NEXT, "thread_start"));
+    }else{
+        arm_thread_state64_set_pc_fptr(state,dlsym(RTLD_NEXT, "thread_start"));
+    }
     assureclean(arm_thread_state64_get_pc(state));
     arm_thread_state64_set_sp(state,_remoteStack + stackpointer*sizeof(cpuword_t));
 #elif defined (__arm__)
@@ -165,7 +171,7 @@ takeover::takeover(mach_port_t target)
     
     if (dlsym(RTLD_NEXT, "pthread_create_from_mach_thread")){
 #if defined (__arm64__)
-        arm_thread_state64_set_pc_fptr(state,(void*)0x4141414141414141);
+        state.__x[32] = 0x4141414141414141; //PC
 #elif defined (__arm__)
         state.__pc = 0x41414141;
 #endif
@@ -196,7 +202,7 @@ takeover::takeover(mach_port_t target)
 
 takeover::takeover(takeover &&tk)
     :_target(tk._target),_remoteStack(tk._remoteStack),_marionetteThread(tk._marionetteThread),_exceptionHandler(tk._exceptionHandler),_emsg(tk._emsg),
-        _isFakeThread(tk._isFakeThread)
+    _isFakeThread(tk._isFakeThread), _signptr_cb{tk._signptr_cb}
 {
     tk._remoteStack = 0;
     tk._target = MACH_PORT_NULL;
@@ -216,13 +222,22 @@ takeover takeover::takeoverWithExceptionHandler(mach_port_t exceptionHandler){
     return tk;
 }
 
+void takeover::setSignptrCB(std::function<cpuword_t(cpuword_t ptr)> signptr_cb){
+    _signptr_cb = signptr_cb;
+}
+
+
 cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     my_thread_state_t *state = (my_thread_state_t*)(_emsg.data+0x24);
     cpuword_t lrmagic = 0x71717171;
     
 #if defined (__arm64__)
-    arm_thread_state64_set_pc_fptr(*state,(void*)addr);
-    arm_thread_state64_set_lr_fptr(*state,(void*)lrmagic);
+    if (_signptr_cb) {
+        state->__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)addr);
+    }else{
+        arm_thread_state64_set_pc_fptr(*state,(void*)addr);
+    }
+    state->__x[30] = lrmagic; //LR
 #else
     state->__lr = (uint32_t)lrmagic;
     state->__pc = (cpuword_t)addr;
@@ -277,9 +292,9 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     assureMach(mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
     
     //get result (implicit through receiving mach_msg)
-    
+        
 #if defined (__arm64__)
-    assure(((cpuword_t)arm_thread_state64_get_pc(*state) & 0x1FFFFFFFF) == lrmagic);
+    assure((state->__x[32]/*PC*/ & 0x1FFFFFFFF) == lrmagic);
 #else
     assure((state->__pc & (~1)) == (lrmagic & (~1)));
 #endif
@@ -399,7 +414,7 @@ void takeover::kidnapThread(){
 
     
 #if defined (__arm64__)
-    arm_thread_state64_set_lr_fptr(state,(void*)0x6161616161616161);
+    state.__x[30] = 0x6161616161616161;
 #elif defined (__arm__)
     state.__lr = 0x61616161; //magic end
 #endif
@@ -464,7 +479,7 @@ void takeover::overtakeMe(){
             assureNoDoublethrow(assureMach(mach_port_deallocate(mach_task_self(), localSenderPort)));
         }
         if (remoteListenerPort) {
-            assureNoDoublethrow(assureMach(callfunc((void*)mach_port_deallocate,{(cpuword_t)mach_task_self_, (cpuword_t)remoteListenerPort})));
+            assureNoDoublethrow(assureMach((kern_return_t)callfunc((void*)mach_port_deallocate,{(cpuword_t)mach_task_self_, (cpuword_t)remoteListenerPort})));
         }
     };
     //no cleanup vars
@@ -536,14 +551,14 @@ void takeover::overtakeMe(){
     primitiveWrite(remoteMsg,&msg,sizeof(msg));
     
     //fill remote_port with remote tasks exception port
-    assureMachclean(callfunc((void*)thread_get_exception_ports,{(cpuword_t)remoteThreadPort, (cpuword_t)EXC_MASK_ALL, (cpuword_t)masks, (cpuword_t)masksCnt, (cpuword_t)&remoteMsg->Head.msgh_remote_port, (cpuword_t)old_behaviors, (cpuword_t)old_flavors}));
+    assureMachclean((kern_return_t)callfunc((void*)thread_get_exception_ports,{(cpuword_t)remoteThreadPort, (cpuword_t)EXC_MASK_ALL, (cpuword_t)masks, (cpuword_t)masksCnt, (cpuword_t)&remoteMsg->Head.msgh_remote_port, (cpuword_t)old_behaviors, (cpuword_t)old_flavors}));
     
     primitiveRead(&remoteMsg->Head.msgh_remote_port, &remoteExcetionHandlerPort, sizeof(remoteExcetionHandlerPort));
 
     if (!remoteExcetionHandlerPort) {
         //thread exception handler not set, it's probably the task exception handler then
         //i was told mach_task_self_ is 0x103 in every process
-        assureMachclean(callfunc((void*)task_get_exception_ports,{(cpuword_t)mach_task_self_, (cpuword_t)EXC_MASK_ALL, (cpuword_t)masks, (cpuword_t)masksCnt, (cpuword_t)&remoteMsg->Head.msgh_remote_port, (cpuword_t)old_behaviors, (cpuword_t)old_flavors}));
+        assureMachclean((kern_return_t)callfunc((void*)task_get_exception_ports,{(cpuword_t)mach_task_self_, (cpuword_t)EXC_MASK_ALL, (cpuword_t)masks, (cpuword_t)masksCnt, (cpuword_t)&remoteMsg->Head.msgh_remote_port, (cpuword_t)old_behaviors, (cpuword_t)old_flavors}));
         primitiveRead(&remoteMsg->Head.msgh_remote_port, &remoteExcetionHandlerPort, sizeof(remoteExcetionHandlerPort));
     }
     assure(remoteExcetionHandlerPort);
@@ -552,7 +567,7 @@ void takeover::overtakeMe(){
     primitiveWrite(&remoteMsg->Head.msgh_local_port,&msg.Head.msgh_local_port,sizeof(msg)-(sizeof(mach_msg_bits_t)+sizeof(mach_msg_size_t)+sizeof(mach_port_t)));
     
     //i was told mach_task_self_ is 0x103 in every process
-    assureMachclean(callfunc((void*)mach_port_allocate,{(cpuword_t)mach_task_self_, (cpuword_t)MACH_PORT_RIGHT_RECEIVE, (cpuword_t)&remoteMsg->thread.name}));
+    assureMachclean((kern_return_t)callfunc((void*)mach_port_allocate,{(cpuword_t)mach_task_self_, (cpuword_t)MACH_PORT_RIGHT_RECEIVE, (cpuword_t)&remoteMsg->thread.name}));
 
     
     //send mach message!
@@ -577,7 +592,7 @@ void takeover::overtakeMe(){
     /*
      remote: add send right
      */
-    assureMachclean(callfunc((void*)mach_port_insert_right,{(cpuword_t)mach_task_self_, (cpuword_t)remoteListenerPort, (cpuword_t)remoteListenerPort, (cpuword_t)MACH_MSG_TYPE_MAKE_SEND}));
+    assureMachclean((kern_return_t)callfunc((void*)mach_port_insert_right,{(cpuword_t)mach_task_self_, (cpuword_t)remoteListenerPort, (cpuword_t)remoteListenerPort, (cpuword_t)MACH_MSG_TYPE_MAKE_SEND}));
 
     /*
      remote: send port send right here
@@ -644,7 +659,7 @@ void takeover::overtakeMe(){
      */
     
     //no clue what's up with mach_msg and the size field o.O
-    assureMach(callfunc((void*)mach_msg, {(cpuword_t)remoteMsg, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(msg)+sizeof(msg.Head), remoteListenerPort, 0, MACH_PORT_NULL}));
+    assureMach((kern_return_t)callfunc((void*)mach_msg, {(cpuword_t)remoteMsg, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(msg)+sizeof(msg.Head), remoteListenerPort, 0, MACH_PORT_NULL}));
 
     /*
      //remote: send back remote name for local task
@@ -665,7 +680,7 @@ void takeover::readMem(void *remote, void *outAddr, size_t size){
         assureMach(mach_vm_read_overwrite(_target, (mach_vm_address_t)remote , (mach_vm_size_t)size, (mach_vm_address_t) outAddr, &out));
     }else{
         assure(_remoteSelf);
-        assureMach(callfunc((void*)mach_vm_write,{(cpuword_t)_remoteSelf, (cpuword_t)outAddr, (cpuword_t)remote, (cpuword_t)size}));
+        assureMach((kern_return_t)callfunc((void*)mach_vm_write,{(cpuword_t)_remoteSelf, (cpuword_t)outAddr, (cpuword_t)remote, (cpuword_t)size}));
     }
 }
 void takeover::writeMem(void *remote, const void *inAddr, size_t size){
@@ -674,7 +689,7 @@ void takeover::writeMem(void *remote, const void *inAddr, size_t size){
     }else{
         assure(_remoteSelf);
         assure(_remoteScratchSpace && _remoteScratchSpaceSize > 8);
-        assureMach(callfunc((void*)mach_vm_read_overwrite,{(cpuword_t)_remoteSelf, (cpuword_t)inAddr, (cpuword_t)size, (cpuword_t)remote, (cpuword_t)_remoteScratchSpace}));
+        assureMach((kern_return_t)callfunc((void*)mach_vm_read_overwrite,{(cpuword_t)_remoteSelf, (cpuword_t)inAddr, (cpuword_t)size, (cpuword_t)remote, (cpuword_t)_remoteScratchSpace}));
     }
 }
 void *takeover::allocMem(size_t size){
@@ -689,9 +704,9 @@ void *takeover::allocMem(size_t size){
         assure(_remoteScratchSpace && _remoteScratchSpaceSize > 8);
         
         //i was told mach_task_self_ is 0x103 in every process
-        assureMach(callfunc((void*)mach_vm_allocate, {(cpuword_t)mach_task_self_,(cpuword_t)_remoteScratchSpace,(cpuword_t)size,(cpuword_t)VM_FLAGS_ANYWHERE}));
+        assureMach((kern_return_t)callfunc((void*)mach_vm_allocate, {(cpuword_t)mach_task_self_,(cpuword_t)_remoteScratchSpace,(cpuword_t)size,(cpuword_t)VM_FLAGS_ANYWHERE}));
         primitiveRead(_remoteScratchSpace, &ret, sizeof(ret));
-        assureMach(callfunc((void*)mach_vm_protect,{(cpuword_t)mach_task_self_, (cpuword_t)ret, (cpuword_t)size, (cpuword_t)1, (cpuword_t)(VM_PROT_READ | VM_PROT_WRITE)}));
+        assureMach((kern_return_t)callfunc((void*)mach_vm_protect,{(cpuword_t)mach_task_self_, (cpuword_t)ret, (cpuword_t)size, (cpuword_t)1, (cpuword_t)(VM_PROT_READ | VM_PROT_WRITE)}));
         return ret;
     }
 }
@@ -701,7 +716,7 @@ void takeover::deallocMem(void *remote, size_t size){
     }else{
         //overtakeme style
         //i was told mach_task_self_ is 0x103 in every process
-        assureMach(callfunc((void*)mach_vm_deallocate,{(cpuword_t)mach_task_self_, (cpuword_t)remote, (cpuword_t)size}));
+        assureMach((kern_return_t)callfunc((void*)mach_vm_deallocate,{(cpuword_t)mach_task_self_, (cpuword_t)remote, (cpuword_t)size}));
     }
 }
 
@@ -729,7 +744,11 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
         if (func_pthread_exit && !ret && !_isFakeThread) {
 #if defined (__arm64__)
             state->__x[0] = 0;
-            arm_thread_state64_set_pc_fptr(*state,func_pthread_exit);
+            if (_signptr_cb) {
+                state->__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)func_pthread_exit);
+            }else{
+                arm_thread_state64_set_pc_fptr(*state,func_pthread_exit);
+            }
 #elif defined (__arm__)
             state->__r[0] = 0;
             state->__pc = (cpuword_t)func_pthread_exit;

@@ -32,6 +32,8 @@ int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,
     return 0x41414141;
 }
 
+
+
 void *loop(void*a){
     printf("thread=%p\n",(void*)(uint64_t)mach_thread_self());
     while (1);
@@ -45,7 +47,6 @@ void *loop(void*a){
 
 //    pthread_create(asd, NULL, loop, (void*)0x61718191);
     
-//    lol(0x11111111,0x22222222,0x33333333,0x44444444,0x55555555,0x66666666,0x77777777,0x88888888);
     
     printf("pid=%d\n",getpid());
 
@@ -55,7 +56,6 @@ void *loop(void*a){
 
         mytk.kidnapThread();
         
-
         mytk.callfunc((void*)lol, {0x10101010,0x20202020,0x30303030,0x40404040,0x50505050,0x60606060,0x70707070,0x80808080});
 
         char str[] = "/usr/lib/libjailbreak.dylib";
