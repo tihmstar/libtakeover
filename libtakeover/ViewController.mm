@@ -47,7 +47,6 @@ void *loop(void*a){
 
 //    pthread_create(asd, NULL, loop, (void*)0x61718191);
     
-    
     printf("pid=%d\n",getpid());
 
     {

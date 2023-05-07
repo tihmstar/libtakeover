@@ -45,7 +45,6 @@ LT_INIT
 AC_CONFIG_FILES([Makefile
                  include/Makefile
                  libtakeover/Makefile
-		 libtakeover.pc
-		 tools/Makefile])
+            		 libtakeover.pc
+            		 tools/Makefile])
 AC_OUTPUT
-
