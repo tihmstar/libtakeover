@@ -199,6 +199,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
     if (dlsym(RTLD_NEXT, "pthread_create_from_mach_thread")){
         kidnapThread();
     }
+    didConstructSuccessfully = true;
 }
 
 takeover::takeover(takeover &&tk)
