@@ -94,6 +94,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
             }
         }
     });
+    kern_return_t err = 0;
     
     /* setup local variables */
     size_t stackpointer = 0;
@@ -180,7 +181,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
 #endif
     }
 
-    assure(!thread_set_state(_marionetteThread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
+    assure(!(err = thread_set_state(_marionetteThread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT)));
 
     //create exception port
     assure(!mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &_exceptionHandler));

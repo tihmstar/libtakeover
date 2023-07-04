@@ -3,101 +3,151 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 50;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8765F92E2223191000A1FEC7 /* libtakeover.cpp */; };
-		87F284742218612600233A01 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284732218612600233A01 /* AppDelegate.m */; };
-		87F284772218612600233A01 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 87F284762218612600233A01 /* ViewController.mm */; };
-		87F2847C2218612700233A01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847B2218612700233A01 /* Assets.xcassets */; };
-		87F2847F2218612700233A01 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847D2218612700233A01 /* LaunchScreen.storyboard */; };
-		87F284822218612700233A01 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284812218612700233A01 /* main.m */; };
-		87FAFAFF23D79DD90060908F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 87F284782218612600233A01 /* Main.storyboard */; };
+		87AA466E2A54C84100C997B7 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA466D2A54C84100C997B7 /* main.cpp */; };
+		87AA46752A54C88100C997B7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46742A54C88100C997B7 /* libtakeover.cpp */; };
+		87AA467A2A54C8E200C997B7 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; };
+		87AA467B2A54C8E200C997B7 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		87AA46892A54CAF200C997B7 /* inject_criticald.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46882A54CAF200C997B7 /* inject_criticald.cpp */; };
+		87AA468A2A54CB6400C997B7 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; };
+		87AA468B2A54CB6400C997B7 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		87AA468D2A54CB6800C997B7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46742A54C88100C997B7 /* libtakeover.cpp */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		87AA46682A54C84100C997B7 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		87AA467C2A54C8E200C997B7 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				87AA467B2A54C8E200C997B7 /* libgeneral.0.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		87AA467F2A54CADF00C997B7 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		87AA468C2A54CB6400C997B7 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				87AA468B2A54CB6400C997B7 /* libgeneral.0.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
-		8765F92E2223191000A1FEC7 /* libtakeover.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
-		8765F92F2223191000A1FEC7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = libtakeover.hpp; path = ../include/libtakeover/libtakeover.hpp; sourceTree = "<group>"; };
-		8765F93622231BCD00A1FEC7 /* TKexception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TKexception.hpp; path = ../include/libtakeover/TKexception.hpp; sourceTree = "<group>"; };
-		8769F0FF25ED7BB400E0A1AA /* libgeneral.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgeneral.a; path = ../../ios_buildroot/root/lib/libgeneral.a; sourceTree = "<group>"; };
-		87F2846F2218612600233A01 /* libtakeover.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = libtakeover.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		87F284722218612600233A01 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
-		87F284732218612600233A01 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-		87F284752218612600233A01 /* ViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ViewController.h; sourceTree = "<group>"; };
-		87F284762218612600233A01 /* ViewController.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
-		87F284792218612600233A01 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		87F2847B2218612700233A01 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		87F2847E2218612700233A01 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		87F284802218612700233A01 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		87F284812218612700233A01 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		87AA466A2A54C84100C997B7 /* libtakeover */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = libtakeover; sourceTree = BUILT_PRODUCTS_DIR; };
+		87AA466D2A54C84100C997B7 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		87AA46742A54C88100C997B7 /* libtakeover.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
+		87AA46762A54C89100C997B7 /* TKexception.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TKexception.hpp; path = include/libtakeover/TKexception.hpp; sourceTree = SOURCE_ROOT; };
+		87AA46772A54C89100C997B7 /* libtakeover.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = libtakeover.hpp; path = include/libtakeover/libtakeover.hpp; sourceTree = SOURCE_ROOT; };
+		87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgeneral.0.dylib; path = ../../../../usr/local/lib/libgeneral.0.dylib; sourceTree = "<group>"; };
+		87AA46812A54CADF00C997B7 /* inject_ciritcald */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = inject_ciritcald; sourceTree = BUILT_PRODUCTS_DIR; };
+		87AA46882A54CAF200C997B7 /* inject_criticald.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = inject_criticald.cpp; path = tools/inject_criticald.cpp; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		87F2846C2218612600233A01 /* Frameworks */ = {
+		87AA46672A54C84100C997B7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				87AA467A2A54C8E200C997B7 /* libgeneral.0.dylib in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		87AA467E2A54CADF00C997B7 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87AA468A2A54CB6400C997B7 /* libgeneral.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		8769F0FE25ED7BB400E0A1AA /* Frameworks */ = {
+		87AA46612A54C84100C997B7 = {
 			isa = PBXGroup;
 			children = (
-				8769F0FF25ED7BB400E0A1AA /* libgeneral.a */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		87F284662218612600233A01 = {
-			isa = PBXGroup;
-			children = (
-				87F284712218612600233A01 /* libtakeover */,
-				87F284702218612600233A01 /* Products */,
-				8769F0FE25ED7BB400E0A1AA /* Frameworks */,
+				87AA466C2A54C84100C997B7 /* libtakeover */,
+				87AA46822A54CADF00C997B7 /* inject_ciritcald */,
+				87AA466B2A54C84100C997B7 /* Products */,
+				87AA46782A54C8E200C997B7 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		87F284702218612600233A01 /* Products */ = {
+		87AA466B2A54C84100C997B7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				87F2846F2218612600233A01 /* libtakeover.app */,
+				87AA466A2A54C84100C997B7 /* libtakeover */,
+				87AA46812A54CADF00C997B7 /* inject_ciritcald */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		87F284712218612600233A01 /* libtakeover */ = {
+		87AA466C2A54C84100C997B7 /* libtakeover */ = {
 			isa = PBXGroup;
 			children = (
-				87F284722218612600233A01 /* AppDelegate.h */,
-				87F284732218612600233A01 /* AppDelegate.m */,
-				8765F93622231BCD00A1FEC7 /* TKexception.hpp */,
-				8765F92F2223191000A1FEC7 /* libtakeover.hpp */,
-				8765F92E2223191000A1FEC7 /* libtakeover.cpp */,
-				87F284752218612600233A01 /* ViewController.h */,
-				87F284762218612600233A01 /* ViewController.mm */,
-				87F284782218612600233A01 /* Main.storyboard */,
-				87F2847B2218612700233A01 /* Assets.xcassets */,
-				87F2847D2218612700233A01 /* LaunchScreen.storyboard */,
-				87F284802218612700233A01 /* Info.plist */,
-				87F284812218612700233A01 /* main.m */,
+				87AA46772A54C89100C997B7 /* libtakeover.hpp */,
+				87AA46762A54C89100C997B7 /* TKexception.hpp */,
+				87AA46742A54C88100C997B7 /* libtakeover.cpp */,
+				87AA466D2A54C84100C997B7 /* main.cpp */,
 			);
 			path = libtakeover;
+			sourceTree = "<group>";
+		};
+		87AA46782A54C8E200C997B7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		87AA46822A54CADF00C997B7 /* inject_ciritcald */ = {
+			isa = PBXGroup;
+			children = (
+				87AA46882A54CAF200C997B7 /* inject_criticald.cpp */,
+			);
+			path = inject_ciritcald;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		87F2846E2218612600233A01 /* libtakeover */ = {
+		87AA46692A54C84100C997B7 /* libtakeover */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 87F284852218612700233A01 /* Build configuration list for PBXNativeTarget "libtakeover" */;
+			buildConfigurationList = 87AA46712A54C84100C997B7 /* Build configuration list for PBXNativeTarget "libtakeover" */;
 			buildPhases = (
-				87F2846B2218612600233A01 /* Sources */,
-				87F2846C2218612600233A01 /* Frameworks */,
-				87F2846D2218612600233A01 /* Resources */,
+				87AA46662A54C84100C997B7 /* Sources */,
+				87AA46672A54C84100C997B7 /* Frameworks */,
+				87AA46682A54C84100C997B7 /* CopyFiles */,
+				87AA467C2A54C8E200C997B7 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -105,96 +155,92 @@
 			);
 			name = libtakeover;
 			productName = libtakeover;
-			productReference = 87F2846F2218612600233A01 /* libtakeover.app */;
-			productType = "com.apple.product-type.application";
+			productReference = 87AA466A2A54C84100C997B7 /* libtakeover */;
+			productType = "com.apple.product-type.tool";
+		};
+		87AA46802A54CADF00C997B7 /* inject_ciritcald */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 87AA46852A54CADF00C997B7 /* Build configuration list for PBXNativeTarget "inject_ciritcald" */;
+			buildPhases = (
+				87AA467D2A54CADF00C997B7 /* Sources */,
+				87AA467E2A54CADF00C997B7 /* Frameworks */,
+				87AA467F2A54CADF00C997B7 /* CopyFiles */,
+				87AA468C2A54CB6400C997B7 /* Embed Libraries */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = inject_ciritcald;
+			productName = inject_ciritcald;
+			productReference = 87AA46812A54CADF00C997B7 /* inject_ciritcald */;
+			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		87F284672218612600233A01 /* Project object */ = {
+		87AA46622A54C84100C997B7 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
-				ORGANIZATIONNAME = tihmstar;
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					87F2846E2218612600233A01 = {
-						CreatedOnToolsVersion = 10.1;
+					87AA46692A54C84100C997B7 = {
+						CreatedOnToolsVersion = 14.3.1;
+					};
+					87AA46802A54CADF00C997B7 = {
+						CreatedOnToolsVersion = 14.3.1;
 					};
 				};
 			};
-			buildConfigurationList = 87F2846A2218612600233A01 /* Build configuration list for PBXProject "libtakeover" */;
-			compatibilityVersion = "Xcode 9.3";
+			buildConfigurationList = 87AA46652A54C84100C997B7 /* Build configuration list for PBXProject "libtakeover" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = 87F284662218612600233A01;
-			productRefGroup = 87F284702218612600233A01 /* Products */;
+			mainGroup = 87AA46612A54C84100C997B7;
+			productRefGroup = 87AA466B2A54C84100C997B7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				87F2846E2218612600233A01 /* libtakeover */,
+				87AA46692A54C84100C997B7 /* libtakeover */,
+				87AA46802A54CADF00C997B7 /* inject_ciritcald */,
 			);
 		};
 /* End PBXProject section */
 
-/* Begin PBXResourcesBuildPhase section */
-		87F2846D2218612600233A01 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				87FAFAFF23D79DD90060908F /* Main.storyboard in Resources */,
-				87F2847F2218612700233A01 /* LaunchScreen.storyboard in Resources */,
-				87F2847C2218612700233A01 /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
-		87F2846B2218612600233A01 /* Sources */ = {
+		87AA46662A54C84100C997B7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				87F284772218612600233A01 /* ViewController.mm in Sources */,
-				8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */,
-				87F284822218612700233A01 /* main.m in Sources */,
-				87F284742218612600233A01 /* AppDelegate.m in Sources */,
+				87AA46752A54C88100C997B7 /* libtakeover.cpp in Sources */,
+				87AA466E2A54C84100C997B7 /* main.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		87AA467D2A54CADF00C997B7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				87AA468D2A54CB6800C997B7 /* libtakeover.cpp in Sources */,
+				87AA46892A54CAF200C997B7 /* inject_criticald.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXVariantGroup section */
-		87F284782218612600233A01 /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				87F284792218612600233A01 /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
-		87F2847D2218612700233A01 /* LaunchScreen.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				87F2847E2218612700233A01 /* Base */,
-			);
-			name = LaunchScreen.storyboard;
-			sourceTree = "<group>";
-		};
-/* End PBXVariantGroup section */
-
 /* Begin XCBuildConfiguration section */
-		87F284832218612700233A01 /* Debug */ = {
+		87AA466F2A54C84100C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -213,13 +259,13 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -238,22 +284,26 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.1;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/include",
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
+				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
-		87F284842218612700233A01 /* Release */ = {
+		87AA46702A54C84100C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CLANG_ENABLE_OBJC_WEAK = YES;
@@ -272,13 +322,13 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
@@ -291,101 +341,90 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.1;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/include",
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = iphoneos;
-				VALIDATE_PRODUCT = YES;
+				SDKROOT = macosx;
 			};
 			name = Release;
 		};
-		87F284862218612700233A01 /* Debug */ = {
+		87AA46722A54C84100C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					"$(ARCHS_STANDARD)",
-					arm64e,
-				);
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 2H3GC964X8;
-				ENABLE_BITCODE = NO;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-					"EXPECTIONNAME='TKexception'",
-				);
-				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/include",
-					/usr/local/include,
-				);
-				INFOPLIST_FILE = libtakeover/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				LIBRARY_SEARCH_PATHS = /Users/tihmstar/ios_buildroot/root/usr/local/staticlib;
-				PRODUCT_BUNDLE_IDENTIFIER = net.tihmstar.libtakeover;
+				HEADER_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		87F284872218612700233A01 /* Release */ = {
+		87AA46732A54C84100C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = (
-					"$(ARCHS_STANDARD)",
-					arm64e,
-				);
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 2H3GC964X8;
-				ENABLE_BITCODE = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(SRCROOT)/include",
-					/usr/local/include,
-				);
-				INFOPLIST_FILE = libtakeover/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				LIBRARY_SEARCH_PATHS = /Users/tihmstar/ios_buildroot/root/usr/local/staticlib;
-				PRODUCT_BUNDLE_IDENTIFIER = net.tihmstar.libtakeover;
+				HEADER_SEARCH_PATHS = "";
+				LIBRARY_SEARCH_PATHS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		87AA46862A54CADF00C997B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					XCODE,
+				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		87AA46872A54CADF00C997B7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		87F2846A2218612600233A01 /* Build configuration list for PBXProject "libtakeover" */ = {
+		87AA46652A54C84100C997B7 /* Build configuration list for PBXProject "libtakeover" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				87F284832218612700233A01 /* Debug */,
-				87F284842218612700233A01 /* Release */,
+				87AA466F2A54C84100C997B7 /* Debug */,
+				87AA46702A54C84100C997B7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		87F284852218612700233A01 /* Build configuration list for PBXNativeTarget "libtakeover" */ = {
+		87AA46712A54C84100C997B7 /* Build configuration list for PBXNativeTarget "libtakeover" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				87F284862218612700233A01 /* Debug */,
-				87F284872218612700233A01 /* Release */,
+				87AA46722A54C84100C997B7 /* Debug */,
+				87AA46732A54C84100C997B7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		87AA46852A54CADF00C997B7 /* Build configuration list for PBXNativeTarget "inject_ciritcald" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				87AA46862A54CADF00C997B7 /* Debug */,
+				87AA46872A54CADF00C997B7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 87F284672218612600233A01 /* Project object */;
+	rootObject = 87AA46622A54C84100C997B7 /* Project object */;
 }

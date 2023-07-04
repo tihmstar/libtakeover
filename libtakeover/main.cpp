@@ -1,22 +1,16 @@
 //
-//  ViewController.m
+//  main.cpp
 //  libtakeover
 //
-//  Created by tihmstar on 16.02.19.
-//  Copyright © 2019 tihmstar. All rights reserved.
+//  Created by tihmstar on 04.07.23.
 //
 
-#import "ViewController.h"
+#include <libgeneral/macros.h>
 #include "libtakeover.hpp"
 #include <dlfcn.h>
 #include <pthread/pthread.h>
 #include "TKexception.hpp"
-
-@interface ViewController ()
-
-@end
-
-@implementation ViewController
+#include <unistd.h>
 
 int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,uint64_t a7,uint64_t a8){
     printf("lol\n");
@@ -32,16 +26,12 @@ int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,
     return 0x41414141;
 }
 
-
-
 void *loop(void*a){
     printf("thread=%p\n",(void*)(uint64_t)mach_thread_self());
     while (1);
 }
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    
+int main(int argc, const char * argv[]) {
     pthread_t dsa;
     pthread_t *asd = &dsa;
 
@@ -50,7 +40,7 @@ void *loop(void*a){
     printf("pid=%d\n",getpid());
 
     {
-        tihmstar::takeover mytk(mach_task_self());        
+        tihmstar::takeover mytk(mach_task_self());
 
 
         mytk.kidnapThread();
@@ -69,10 +59,6 @@ void *loop(void*a){
         void *rdlopen = (void*)&dlopen;
     }
     
-    
-    
     printf("done");
+    return 0;
 }
-
-
-@end
