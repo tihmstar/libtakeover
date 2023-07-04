@@ -114,6 +114,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
         });
         kern_return_t err = 0;
         retassure(!(err = mach_port_insert_right(mach_task_self(),_target, _target, MACH_MSG_TYPE_COPY_SEND)), "Failed to insert send right");
+        didSucced = true;
     }
 
     //allocate remote stack
