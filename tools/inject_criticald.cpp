@@ -47,15 +47,10 @@ void inject(uint32_t pid, const char *dylib){
     try {
         platformizeme();
         printf("ok!\n");
-    } catch (TKexception &e) {
+    } catch (tihmstar::exception &e) {
         printf("fail!\n");
-        printf("[TKexception]:\n");
-        printf("what=%s\n",e.what());
-        printf("code=%d\n",e.code());
-        printf("commit count=%s:\n",e.build_commit_count().c_str());
-        printf("commit sha  =%s:\n",e.build_commit_sha().c_str());
-        printf("\n");
-        printf("platformizing failed! Continuing without platformization (injection to platform processes will fail!)\n");
+        e.dump();
+        printf("platformizing failed! Continuing without platformization (injection to platform processes may fail!)\n");
     }
 
     printf("Initing takeover...");

@@ -166,14 +166,8 @@ int main(int argc, const char * argv[]) {
                 try {
                     err = inject_command(pids[i],command);
                     printf("Injection succeeded!\n");
-                } catch (TKexception &e) {
-                    printf("[TKexception]:\n");
-                    printf("what=%s\n",e.what());
-                    printf("code=%d\n",e.code());
-                    printf("commit count=%s:\n",e.build_commit_count().c_str());
-                    printf("commit sha  =%s:\n",e.build_commit_sha().c_str());
-                    printf("\n");
-
+                } catch (tihmstar::exception &e) {
+                    e.dump();
                     err = e.code();
                     printf("Injection failed!\n");
                 }
