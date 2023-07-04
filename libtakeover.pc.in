@@ -5,5 +5,7 @@ includedir=@includedir@
 
 Name: libtakeover
 Description: call functions in remote process
+
+Requires: @openssl_requires@
 Libs: -L${libdir} -ltakeover
 Cflags: -I${includedir}

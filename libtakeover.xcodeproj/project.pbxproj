@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		8765F9302223191000A1FEC7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8765F92E2223191000A1FEC7 /* libtakeover.cpp */; };
-		8769F10125ED7D0C00E0A1AA /* libgeneral.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 8769F0FF25ED7BB400E0A1AA /* libgeneral.a */; };
 		87F284742218612600233A01 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 87F284732218612600233A01 /* AppDelegate.m */; };
 		87F284772218612600233A01 /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 87F284762218612600233A01 /* ViewController.mm */; };
 		87F2847C2218612700233A01 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87F2847B2218612700233A01 /* Assets.xcassets */; };
@@ -39,7 +38,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8769F10125ED7D0C00E0A1AA /* libgeneral.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,8 +317,8 @@
 					"EXPECTIONNAME='TKexception'",
 				);
 				HEADER_SEARCH_PATHS = (
-					/Users/tihmstar/ios_buildroot/root/usr/local/include,
 					"$(SRCROOT)/include",
+					/usr/local/include,
 				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;
@@ -349,8 +347,8 @@
 				DEVELOPMENT_TEAM = 2H3GC964X8;
 				ENABLE_BITCODE = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/tihmstar/ios_buildroot/root/usr/local/include,
 					"$(SRCROOT)/include",
+					/usr/local/include,
 				);
 				INFOPLIST_FILE = libtakeover/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.2;

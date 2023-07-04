@@ -173,7 +173,6 @@ int main(int argc, const char * argv[]) {
                     printf("commit count=%s:\n",e.build_commit_count().c_str());
                     printf("commit sha  =%s:\n",e.build_commit_sha().c_str());
                     printf("\n");
-                    printf("moreCode=%llu:\n",e.moreCode());
 
                     err = e.code();
                     printf("Injection failed!\n");

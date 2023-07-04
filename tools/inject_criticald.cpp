@@ -25,7 +25,7 @@ void platformizeme() {
     fix_entitle_prt_t ptr = (fix_entitle_prt_t)dlsym(handle, "jb_oneshot_entitle_now");
     
     if ((dlsym_error = dlerror())) {
-        reterror(std::string("failed to link \"jb_oneshot_entitle_now\" with error: ",dlsym_error));
+        reterror("failed to link \"jb_oneshot_entitle_now\" with error: %s",dlsym_error);
     }
     
     ptr(getpid(), FLAG_PLATFORMIZE);
@@ -94,8 +94,8 @@ void inject(uint32_t pid, const char *dylib){
 }
 
 
-int main(int argc, char* argv[]){
-    int err = 0;
+MAINFUNCTION
+int main_r(int argc, const char* argv[]){
     uint32_t pid = 0;
     const char *dylib = NULL;
     printf("inject_criticald version=%s commit=%s\n",takeover::build_commit_count().c_str(),takeover::build_commit_sha().c_str());
@@ -109,22 +109,8 @@ int main(int argc, char* argv[]){
     
     printf("inject(%d,%s)\n",pid,dylib);
     
-    try {
-        inject(pid,dylib);
-        printf("Injection succeeded!\n");
-    } catch (TKexception &e) {
-        printf("[TKexception]:\n");
-        printf("what=%s\n",e.what());
-        printf("code=%d\n",e.code());
-        printf("commit count=%s:\n",e.build_commit_count().c_str());
-        printf("commit sha  =%s:\n",e.build_commit_sha().c_str());
-        printf("\n");
-        printf("moreCode=%llu:\n",e.moreCode());
+    inject(pid,dylib);
+    printf("Injection succeeded!\n");
 
-        err = e.code();
-        printf("Injection failed!\n");
-    }
-    
-error:
-    return err;
+    return 0;
 }
