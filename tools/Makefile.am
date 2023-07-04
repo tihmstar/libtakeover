@@ -14,7 +14,5 @@ orphan_commander_SOURCES  = orphan_commander.cpp
 
 
 all-local: inject_criticald orphan_commander
-	strip inject_criticald
-	strip orphan_commander
 	ldid -SEnt.plist inject_criticald || ldid -SEnt.plist .libs/inject_criticald
 	ldid -SEnt.plist orphan_commander || ldid -SEnt.plist .libs/orphan_commander
