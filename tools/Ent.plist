@@ -6,9 +6,9 @@
 	<true/>
 	<key>get-task-allow</key>
 	<true/>
-	<key>com.apple.system-task-ports</key>
+	<key>com.apple.system-task-ports.control</key>
 	<true/>
-	<key>task_for_pid-allow</key>
+	<key>com.apple.private.cs.debugger</key>
 	<true/>
 </dict>
 </plist>
