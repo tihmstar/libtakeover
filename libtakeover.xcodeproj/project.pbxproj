@@ -7,10 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		877CA9182AD1BA73008E5262 /* libgeneral.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 877CA9172AD1BA6C008E5262 /* libgeneral.a */; };
 		87AA466E2A54C84100C997B7 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA466D2A54C84100C997B7 /* main.cpp */; };
 		87AA46752A54C88100C997B7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46742A54C88100C997B7 /* libtakeover.cpp */; };
-		87AA467A2A54C8E200C997B7 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; };
-		87AA467B2A54C8E200C997B7 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		87AA46892A54CAF200C997B7 /* inject_criticald.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46882A54CAF200C997B7 /* inject_criticald.cpp */; };
 		87AA468A2A54CB6400C997B7 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; };
 		87AA468B2A54CB6400C997B7 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -26,17 +25,6 @@
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 1;
-		};
-		87AA467C2A54C8E200C997B7 /* Embed Libraries */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				87AA467B2A54C8E200C997B7 /* libgeneral.0.dylib in Embed Libraries */,
-			);
-			name = "Embed Libraries";
-			runOnlyForDeploymentPostprocessing = 0;
 		};
 		87AA467F2A54CADF00C997B7 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -61,6 +49,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		877CA9172AD1BA6C008E5262 /* libgeneral.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgeneral.a; path = ../../../../usr/local/lib/libgeneral.a; sourceTree = "<group>"; };
 		87AA466A2A54C84100C997B7 /* libtakeover */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = libtakeover; sourceTree = BUILT_PRODUCTS_DIR; };
 		87AA466D2A54C84100C997B7 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		87AA46742A54C88100C997B7 /* libtakeover.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = libtakeover.cpp; sourceTree = "<group>"; };
@@ -76,7 +65,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				87AA467A2A54C8E200C997B7 /* libgeneral.0.dylib in Frameworks */,
+				877CA9182AD1BA73008E5262 /* libgeneral.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,6 +113,7 @@
 		87AA46782A54C8E200C997B7 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				877CA9172AD1BA6C008E5262 /* libgeneral.a */,
 				87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */,
 			);
 			name = Frameworks;
@@ -147,7 +137,6 @@
 				87AA46662A54C84100C997B7 /* Sources */,
 				87AA46672A54C84100C997B7 /* Frameworks */,
 				87AA46682A54C84100C997B7 /* CopyFiles */,
-				87AA467C2A54C8E200C997B7 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -238,7 +227,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -302,7 +291,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -358,8 +347,13 @@
 		87AA46722A54C84100C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
 				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					XCODE,
+				);
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
 					"$(SRCROOT)/include",
@@ -372,7 +366,7 @@
 		87AA46732A54C84100C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
 				CODE_SIGN_STYLE = Automatic;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,

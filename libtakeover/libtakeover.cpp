@@ -257,7 +257,7 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     }else{
         arm_thread_state64_set_pc_fptr(*state,addr);
     }
-    state->__x[30] = lrmagic; //LR
+    arm_thread_state64_set_lr_fptr(*state, ptrauth_sign_unauthenticated((void*)lrmagic, ptrauth_key_function_pointer, 0));
 #else
     state->__lr = (uint32_t)lrmagic;
     state->__pc = (cpuword_t)addr;
@@ -372,7 +372,6 @@ void takeover::kidnapThread(){
     void *func_mutex_unlock_pc      = NULL;
     void *func_pthread_attr_init_pc = NULL;
     void *func_pthread_create_pc    = NULL;
-    void *func_pthread_exit_pc      = NULL;
     void *pt_from_mt_pc = NULL;
     cpuword_t ret = 0;
     thread_array_t threadList = 0;
@@ -394,7 +393,6 @@ void takeover::kidnapThread(){
     assure(func_mutex_unlock_pc         = dlsym(RTLD_NEXT, "pthread_mutex_unlock"));
     assure(func_pthread_attr_init_pc    = dlsym(RTLD_NEXT, "pthread_attr_init"));
     assure(func_pthread_create_pc       = dlsym(RTLD_NEXT, "pthread_create"));
-    assure(func_pthread_exit_pc         = dlsym(RTLD_NEXT, "pthread_exit"));
                 
     
     if ((pt_from_mt_pc = dlsym(RTLD_NEXT, "pthread_create_from_mach_thread"))) {
@@ -453,21 +451,19 @@ void takeover::kidnapThread(){
     
     //set our new port
     assure(!thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_STATE | MACH_EXCEPTION_CODES, MY_THREAD_STATE));
-
     
 #if defined (__arm64__)
     state.__x[30] = 0x6161616161616161;
 #elif defined (__arm__)
     state.__lr = 0x61616161; //magic end
 #endif
-    
-    //set magic end
-    assure(!thread_set_state(kidnapped_thread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
-
-    
+        
     if (isThreadSuspended) {
         assure(!thread_resume(kidnapped_thread));
     }else{
+        //set magic end
+        assure(!thread_set_state(kidnapped_thread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
+
         if (pt_from_mt_pc) {
             //this new thread will finish again
             assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock_pc, (cpuword_t)mem_mutex})));
