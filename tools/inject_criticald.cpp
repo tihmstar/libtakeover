@@ -5,11 +5,14 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <string>
+#include <spawn.h>
 
 #include <libtakeover/libtakeover.hpp>
 #include <libgeneral/macros.h>
 
 using namespace tihmstar;
+
+int posix_spawnattr_set_ptrauth_task_port_np(posix_spawnattr_t * __restrict attr,mach_port_t port);
 
 /* Set platform binary flag */
 #define FLAG_PLATFORMIZE (1 << 1)
@@ -52,7 +55,7 @@ void inject(uint32_t pid, const char *dylib){
         e.dump();
         printf("platformizing failed! Continuing without platformization (injection to platform processes may fail!)\n");
     }
-
+    
     printf("Initing takeover...");
     tihmstar::takeover mytk(remoteTask);
     printf("ok!\n");

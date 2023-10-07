@@ -13,6 +13,9 @@
 #include <pthread/pthread.h>
 #include <stdlib.h>
 #include <libgeneral/macros.h>
+#include <ptrauth.h>
+#include <mach-o/dyld_images.h>
+#include <objc/runtime.h>
 
 #include <unistd.h>
 
@@ -78,6 +81,7 @@ takeover::takeover(mach_port_t target, std::function<cpuword_t(cpuword_t ptr)> s
     /* init member vars */
     :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
 _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _signptr_cb{signptr_cb}
+,_isRemotePACed(false)
 {
     bool didConstructSuccessfully = false;
     cpuword_t *localStack = NULL;
@@ -101,6 +105,9 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
     mach_msg_type_number_t count = MY_THREAD_STATE_COUNT;
     my_thread_state_t state = {0};
     
+#if defined (__arm64__)
+    _isRemotePACed = targetIsPACed(_target);
+#endif
     
     /* actually construct object */
     
@@ -155,7 +162,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
     state.__x[0] = (cpuword_t)_remoteStack;
     state.__x[30] = 0x7171717171717171; //LR
     if (_signptr_cb) {
-        state.__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)dlsym(RTLD_NEXT, "thread_start"));
+        state.__x[32]/*PC*/ = (cpuword_t)_signptr_cb((cpuword_t)ptrauth_strip(dlsym(RTLD_NEXT, "thread_start"), ptrauth_key_asia));
     }else{
         arm_thread_state64_set_pc_fptr(state,dlsym(RTLD_NEXT, "thread_start"));
     }
@@ -238,7 +245,7 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     if (_signptr_cb) {
         state->__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)addr);
     }else{
-        arm_thread_state64_set_pc_fptr(*state,(void*)addr);
+        arm_thread_state64_set_pc_fptr(*state,addr);
     }
     state->__x[30] = lrmagic; //LR
 #else
@@ -315,13 +322,13 @@ void takeover::kidnapThread(){
     bool lockIsInited = false;
     void *mem_mutex           = NULL;
     void *mem_thread          = NULL;
-    void *func_mutex_destroy  = NULL;
+    void *func_mutex_destroy_pc  = NULL;
     mach_port_t kidnapped_thread = 0;
     mach_port_t newExceptionHandler = 0;
     cleanup([&]{
         if (lockIsInited) {
             try {
-                callfunc(func_mutex_destroy, {(cpuword_t)mem_mutex});
+                callfunc(func_mutex_destroy_pc, {(cpuword_t)mem_mutex});
             } catch (tihmstar::exception &e) {
                 e.dump();
             }
@@ -350,12 +357,14 @@ void takeover::kidnapThread(){
         }
     });
     
-    void *func_mutex_init     = NULL;
-    void *func_mutex_lock     = NULL;
-    void *func_mutex_unlock   = NULL;
-    void *func_pthread_create = NULL;
-    void *func_pthread_exit   = NULL;
-    void *pt_from_mt = NULL;
+    void *func_mutex_init_pc     = NULL;
+    void *func_mutex_lock_pc     = NULL;
+    void *func_mutex_lock_arg     = NULL;
+    void *func_mutex_unlock_pc   = NULL;
+    void *func_mutex_unlock_arg   = NULL;
+    void *func_pthread_create_pc = NULL;
+    void *func_pthread_exit_pc   = NULL;
+    void *pt_from_mt_pc = NULL;
     cpuword_t ret = 0;
     thread_array_t threadList = 0;
     mach_msg_type_number_t threadCount = 0;
@@ -365,28 +374,31 @@ void takeover::kidnapThread(){
     assure(mem_mutex = allocMem(sizeof(pthread_mutex_t)));
     assure(mem_thread = allocMem(sizeof(pthread_t)));
 
-    assure(func_mutex_init     = dlsym(RTLD_NEXT, "pthread_mutex_init"));
-    assure(func_mutex_destroy  = dlsym(RTLD_NEXT, "pthread_mutex_destroy"));
-    assure(func_mutex_lock     = dlsym(RTLD_NEXT, "pthread_mutex_lock"));
-    assure(func_mutex_unlock   = dlsym(RTLD_NEXT, "pthread_mutex_unlock"));
-    assure(func_pthread_create = dlsym(RTLD_NEXT, "pthread_create"));
-    assure(func_pthread_exit   = dlsym(RTLD_NEXT, "pthread_exit"));
     
-    assure(!(ret = callfunc(func_mutex_init, {(cpuword_t)mem_mutex,0})));
+    assure(func_mutex_init_pc     = dlsym(RTLD_NEXT, "pthread_mutex_init"));
+    assure(func_mutex_destroy_pc  = dlsym(RTLD_NEXT, "pthread_mutex_destroy"));
+    assure(func_mutex_lock_pc     = dlsym(RTLD_NEXT, "pthread_mutex_lock"));
+    assure(func_mutex_lock_arg    = getRemoteSym("pthread_mutex_lock"));
+    assure(func_mutex_unlock_pc   = dlsym(RTLD_NEXT, "pthread_mutex_unlock"));
+    assure(func_mutex_unlock_arg  = getRemoteSym("pthread_mutex_unlock"));
+    assure(func_pthread_create_pc = dlsym(RTLD_NEXT, "pthread_create"));
+    assure(func_pthread_exit_pc   = dlsym(RTLD_NEXT, "pthread_exit"));
+    
+    assure(!(ret = callfunc(func_mutex_init_pc, {(cpuword_t)mem_mutex,0})));
     lockIsInited = true;
     
-    if ((pt_from_mt = dlsym(RTLD_NEXT, "pthread_create_from_mach_thread"))) {
+    if ((pt_from_mt_pc = dlsym(RTLD_NEXT, "pthread_create_from_mach_thread"))) {
         //this spawns thread which locks mutex and finishes
-        assure(!(ret = callfunc(pt_from_mt, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_lock, (cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_lock_arg, (cpuword_t)mem_mutex})));
         
         usleep(420); //wait for new thread to spawn
 
         //this spawns thread which locks mutex and stays, we will kidnap this one
-        assure(!(ret = callfunc(pt_from_mt, {(cpuword_t)mem_thread, NULL, (cpuword_t)func_mutex_lock, (cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)mem_thread, NULL, (cpuword_t)func_mutex_lock_arg, (cpuword_t)mem_mutex})));
     }else{
-        assure(!(ret = callfunc(func_mutex_lock, {(cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(func_mutex_lock_pc, {(cpuword_t)mem_mutex})));
 
-        assure(!(ret = callfunc(func_pthread_create, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock,(cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(func_pthread_create_pc, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock_arg,(cpuword_t)mem_mutex})));
     }
 
     usleep(420); //wait for new thread to spawn
@@ -427,14 +439,14 @@ void takeover::kidnapThread(){
     //set magic end
     assure(!thread_set_state(kidnapped_thread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
 
-    if (pt_from_mt) {
+    if (pt_from_mt_pc) {
         //this new thread will finish again
-        assure(!(ret = callfunc(pt_from_mt, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock, (cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock_arg, (cpuword_t)mem_mutex})));
         
         usleep(420); //wait for new thread to spawn
     }else{
         //unlock mutex and let thread fall in magic
-        assure(!(ret = callfunc(func_mutex_unlock, {(cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(func_mutex_unlock_pc, {(cpuword_t)mem_mutex})));
     }
         
     
@@ -678,7 +690,16 @@ void takeover::overtakeMe(){
 #undef allocScratchSpace
 }
 
-
+void *takeover::takeover::getRemoteSym(const char *sym){
+    void *ret = ptrauth_strip(dlsym(RTLD_NEXT, sym),ptrauth_key_process_independent_code);
+    if (_signptr_cb) {
+        ret = (void*)_signptr_cb((cpuword_t)ret);
+    }else if (_isRemotePACed){
+        writeMem((void*)_remoteStack, sym, strlen(sym)+1);
+        return (void*)callfunc(dlsym(RTLD_NEXT, sym), {static_cast<cpuword_t>((cpuword_t)RTLD_NEXT), static_cast<cpuword_t>(_remoteStack)});
+    }
+    return ret;
+}
 
 void takeover::readMem(void *remote, void *outAddr, size_t size){
     mach_vm_size_t out = size;
@@ -842,3 +863,18 @@ std::string takeover::build_commit_count(){
 std::string takeover::build_commit_sha(){
     return VERSION_COMMIT_SHA;
 };
+
+bool takeover::targetIsPACed(const mach_port_t target){
+    void *(*my_objc_getClass)(const char*) = NULL;
+    void *handle = NULL;
+    void *someclass = NULL;
+    uint64_t remoteClass = 0;
+    kern_return_t err = 0;
+
+    retassure(handle = dlopen("/usr/lib/libobjc.A.dylib", RTLD_NOW), "Failed to open libojc");
+    retassure(my_objc_getClass = (void*(*)(const char*))dlsym(handle, "objc_getClass"), "Failed to get _objc_getClass");
+    retassure(someclass = my_objc_getClass("NSObject"), "Failed to get nsobject class");
+    mach_vm_size_t out = sizeof(remoteClass);
+    assure(!(err = mach_vm_read_overwrite(target, (mach_vm_address_t)someclass , (mach_vm_size_t)out, (mach_vm_address_t)&remoteClass, &out)));
+    return (remoteClass >> 35);
+}

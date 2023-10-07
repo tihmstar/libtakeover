@@ -34,6 +34,7 @@ namespace tihmstar {
         mach_vm_address_t _remoteStack;
         const mach_vm_size_t _remoteStackSize = 0x4000;
         bool _isFakeThread;
+        bool _isRemotePACed;
         
         mach_port_t _remoteSelf;
         void *_remoteScratchSpace;
@@ -60,6 +61,7 @@ namespace tihmstar {
         void kidnapThread();
         void overtakeMe();
 
+        void *getRemoteSym(const char *sym);
         void readMem(void *remote, void *outAddr, size_t size);
         void writeMem(void *remote, const void *inAddr, size_t size);
         void *allocMem(size_t size);
@@ -70,6 +72,8 @@ namespace tihmstar {
         
         static std::string build_commit_count();
         static std::string build_commit_sha();
+        
+        static bool targetIsPACed(const mach_port_t target);
     };
     
 };
