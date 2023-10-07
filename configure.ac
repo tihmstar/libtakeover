@@ -36,6 +36,18 @@ PKG_CHECK_MODULES(libgeneral, $LIBGENERAL_REQUIRES_STR)
 
 AC_SUBST([libgeneral_requires], [$LIBGENERAL_REQUIRES_STR])
 
+AC_ARG_ENABLE([debug],
+            [AS_HELP_STRING([--enable-debug],
+            [enable debug build(default is no)])],
+            [debug_build=true],
+            [debug_build=false])
+
+if test "$debug_build" = true; then
+  echo "*** Note: debug build requested ***"
+  CFLAGS+=" -g -O0 -DDEBUG=1"
+  CXXFLAGS+=" -g -O0 -DDEBUG=1"
+fi
+
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h unistd.h])
 

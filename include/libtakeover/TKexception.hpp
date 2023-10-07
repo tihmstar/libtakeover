@@ -10,12 +10,18 @@
 #define tkexception_hpp
 
 #include <libgeneral/macros.h>
+#include <libgeneral/exception.hpp>
 #include <stdint.h>
 
 namespace tihmstar {
     class TKexception : public tihmstar::exception{
         using tihmstar::exception::exception;
     };
+
+    class TKexception_Bad_PC_Magic : public tihmstar::TKexception{
+        using TKexception::TKexception;
+    };
+
 };
 
 

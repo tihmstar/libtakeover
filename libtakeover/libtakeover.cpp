@@ -241,6 +241,16 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     my_thread_state_t *state = (my_thread_state_t*)(_emsg.data+0x24);
     cpuword_t lrmagic = 0x71717171;
     
+#ifdef DEBUG
+    {
+        printf("calling (0x%016llx)(",(uint64_t)addr);
+        for (auto arg : x) {
+            printf("0x%016llx, ",arg);
+        }
+        printf(")\n");
+    }
+#endif
+    
 #if defined (__arm64__)
     if (_signptr_cb) {
         state->__x[32]/*PC*/ = (uint64_t)_signptr_cb((cpuword_t)addr);
@@ -304,9 +314,9 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     //get result (implicit through receiving mach_msg)
         
 #if defined (__arm64__)
-    assure((state->__x[32]/*PC*/ & 0x1FFFFFFFF) == lrmagic);
+    retcustomassure(TKexception_Bad_PC_Magic, (state->__x[32]/*PC*/ & 0xFFFFFFFF) == lrmagic, "unexpected PC after callfunc=0x%016llx",state->__x[32]);
 #else
-    assure((state->__pc & (~1)) == (lrmagic & (~1)));
+    retcustomassure(TKexception_Bad_PC_Magic, (state->__pc & (~1)) == (lrmagic & (~1)), "unexpected PC after callfunc=0x%08x",state->__pc);
 #endif
     
 #if defined (__arm64__)
@@ -357,48 +367,52 @@ void takeover::kidnapThread(){
         }
     });
     
-    void *func_mutex_init_pc     = NULL;
-    void *func_mutex_lock_pc     = NULL;
-    void *func_mutex_lock_arg     = NULL;
-    void *func_mutex_unlock_pc   = NULL;
-    void *func_mutex_unlock_arg   = NULL;
-    void *func_pthread_create_pc = NULL;
-    void *func_pthread_exit_pc   = NULL;
+    void *func_mutex_init_pc        = NULL;
+    void *func_mutex_lock_pc        = NULL;
+    void *func_mutex_unlock_pc      = NULL;
+    void *func_pthread_attr_init_pc = NULL;
+    void *func_pthread_create_pc    = NULL;
+    void *func_pthread_exit_pc      = NULL;
     void *pt_from_mt_pc = NULL;
     cpuword_t ret = 0;
     thread_array_t threadList = 0;
     mach_msg_type_number_t threadCount = 0;
     my_thread_state_t state = {0};
     mach_msg_type_number_t count = MY_THREAD_STATE_COUNT;
-        
+
+    bool isThreadSuspended = false;
+    
     assure(mem_mutex = allocMem(sizeof(pthread_mutex_t)));
     assure(mem_thread = allocMem(sizeof(pthread_t)));
 
+#define _PTHREAD_CREATE_FROM_MACH_THREAD  0x1
+#define _PTHREAD_CREATE_SUSPENDED         0x2
     
-    assure(func_mutex_init_pc     = dlsym(RTLD_NEXT, "pthread_mutex_init"));
-    assure(func_mutex_destroy_pc  = dlsym(RTLD_NEXT, "pthread_mutex_destroy"));
-    assure(func_mutex_lock_pc     = dlsym(RTLD_NEXT, "pthread_mutex_lock"));
-    assure(func_mutex_lock_arg    = getRemoteSym("pthread_mutex_lock"));
-    assure(func_mutex_unlock_pc   = dlsym(RTLD_NEXT, "pthread_mutex_unlock"));
-    assure(func_mutex_unlock_arg  = getRemoteSym("pthread_mutex_unlock"));
-    assure(func_pthread_create_pc = dlsym(RTLD_NEXT, "pthread_create"));
-    assure(func_pthread_exit_pc   = dlsym(RTLD_NEXT, "pthread_exit"));
-    
-    assure(!(ret = callfunc(func_mutex_init_pc, {(cpuword_t)mem_mutex,0})));
-    lockIsInited = true;
+    assure(func_mutex_init_pc           = dlsym(RTLD_NEXT, "pthread_mutex_init"));
+    assure(func_mutex_destroy_pc        = dlsym(RTLD_NEXT, "pthread_mutex_destroy"));
+    assure(func_mutex_lock_pc           = dlsym(RTLD_NEXT, "pthread_mutex_lock"));
+    assure(func_mutex_unlock_pc         = dlsym(RTLD_NEXT, "pthread_mutex_unlock"));
+    assure(func_pthread_attr_init_pc    = dlsym(RTLD_NEXT, "pthread_attr_init"));
+    assure(func_pthread_create_pc       = dlsym(RTLD_NEXT, "pthread_create"));
+    assure(func_pthread_exit_pc         = dlsym(RTLD_NEXT, "pthread_exit"));
+                
     
     if ((pt_from_mt_pc = dlsym(RTLD_NEXT, "pthread_create_from_mach_thread"))) {
-        //this spawns thread which locks mutex and finishes
-        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_lock_arg, (cpuword_t)mem_mutex})));
-        
-        usleep(420); //wait for new thread to spawn
+        assure(!(ret = callfunc(func_pthread_attr_init_pc, {(cpuword_t)mem_mutex})));
 
-        //this spawns thread which locks mutex and stays, we will kidnap this one
-        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)mem_thread, NULL, (cpuword_t)func_mutex_lock_arg, (cpuword_t)mem_mutex})));
+        pt_from_mt_pc = ptrauth_strip(pt_from_mt_pc, ptrauth_key_process_independent_code);
+        pt_from_mt_pc = ((uint8_t*)pt_from_mt_pc)+4;
+        pt_from_mt_pc = ptrauth_sign_unauthenticated(pt_from_mt_pc, ptrauth_key_function_pointer, 0);
+        
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)mem_thread, NULL, (cpuword_t)0x71717171, (cpuword_t)0, _PTHREAD_CREATE_FROM_MACH_THREAD | _PTHREAD_CREATE_SUSPENDED})));
+        isThreadSuspended = true;
     }else{
+        assure(!(ret = callfunc(func_mutex_init_pc, {(cpuword_t)mem_mutex,0})));
+        lockIsInited = true;
+
         assure(!(ret = callfunc(func_mutex_lock_pc, {(cpuword_t)mem_mutex})));
 
-        assure(!(ret = callfunc(func_pthread_create_pc, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock_arg,(cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(func_pthread_create_pc, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock_pc,(cpuword_t)mem_mutex})));
     }
 
     usleep(420); //wait for new thread to spawn
@@ -408,15 +422,27 @@ void takeover::kidnapThread(){
     for (int i=0; i<threadCount; i++) {
         assure(!thread_get_state(threadList[i], MY_THREAD_STATE, (thread_state_t)&state, &count));
         
-        
+
+        if (isThreadSuspended) {
+#if defined (__arm64__)
+            if (state.__x[2] == (cpuword_t)0x71717171) {
+#elif defined (__arm__)
+            if (state.__r[2] == (cpuword_t)0x71717171) {
+#endif
+                //found to-kidnap-thread!
+                kidnapped_thread = threadList[i];
+                break;
+            }
+        }else{
 #if defined (__arm64__)
             if (state.__x[0] == (cpuword_t)mem_mutex) {
 #elif defined (__arm__)
             if (state.__r[0] == (cpuword_t)mem_mutex) {
 #endif
-            //found to-kidnap-thread!
-            kidnapped_thread = threadList[i];
-            break;
+                //found to-kidnap-thread!
+                kidnapped_thread = threadList[i];
+                break;
+            }
         }
     }
     assure(kidnapped_thread);
@@ -434,21 +460,24 @@ void takeover::kidnapThread(){
 #elif defined (__arm__)
     state.__lr = 0x61616161; //magic end
 #endif
-        
     
     //set magic end
     assure(!thread_set_state(kidnapped_thread, MY_THREAD_STATE, (thread_state_t)&state, MY_THREAD_STATE_COUNT));
 
-    if (pt_from_mt_pc) {
-        //this new thread will finish again
-        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock_arg, (cpuword_t)mem_mutex})));
-        
-        usleep(420); //wait for new thread to spawn
+    
+    if (isThreadSuspended) {
+        assure(!thread_resume(kidnapped_thread));
     }else{
-        //unlock mutex and let thread fall in magic
-        assure(!(ret = callfunc(func_mutex_unlock_pc, {(cpuword_t)mem_mutex})));
+        if (pt_from_mt_pc) {
+            //this new thread will finish again
+            assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remoteStack, NULL, (cpuword_t)func_mutex_unlock_pc, (cpuword_t)mem_mutex})));
+            
+            usleep(420); //wait for new thread to spawn
+        }else{
+            //unlock mutex and let thread fall in magic
+            assure(!(ret = callfunc(func_mutex_unlock_pc, {(cpuword_t)mem_mutex})));
+        }
     }
-        
     
     //kill marionettThread
     deinit(true);
@@ -696,7 +725,7 @@ void *takeover::takeover::getRemoteSym(const char *sym){
         ret = (void*)_signptr_cb((cpuword_t)ret);
     }else if (_isRemotePACed){
         writeMem((void*)_remoteStack, sym, strlen(sym)+1);
-        return (void*)callfunc(dlsym(RTLD_NEXT, sym), {static_cast<cpuword_t>((cpuword_t)RTLD_NEXT), static_cast<cpuword_t>(_remoteStack)});
+        return (void*)callfunc(dlsym(RTLD_NEXT, "dlsym"), {static_cast<cpuword_t>((cpuword_t)RTLD_NEXT), static_cast<cpuword_t>(_remoteStack)});
     }
     return ret;
 }
