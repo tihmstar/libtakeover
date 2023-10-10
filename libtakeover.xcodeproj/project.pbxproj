@@ -8,11 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		877CA9182AD1BA73008E5262 /* libgeneral.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 877CA9172AD1BA6C008E5262 /* libgeneral.a */; };
+		87887D2B2AD5E39600116670 /* libgeneral.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 877CA9172AD1BA6C008E5262 /* libgeneral.a */; };
 		87AA466E2A54C84100C997B7 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA466D2A54C84100C997B7 /* main.cpp */; };
 		87AA46752A54C88100C997B7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46742A54C88100C997B7 /* libtakeover.cpp */; };
 		87AA46892A54CAF200C997B7 /* inject_criticald.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46882A54CAF200C997B7 /* inject_criticald.cpp */; };
-		87AA468A2A54CB6400C997B7 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; };
-		87AA468B2A54CB6400C997B7 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		87AA468D2A54CB6800C997B7 /* libtakeover.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87AA46742A54C88100C997B7 /* libtakeover.cpp */; };
 /* End PBXBuildFile section */
 
@@ -35,17 +34,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
-		87AA468C2A54CB6400C997B7 /* Embed Libraries */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				87AA468B2A54CB6400C997B7 /* libgeneral.0.dylib in Embed Libraries */,
-			);
-			name = "Embed Libraries";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +46,8 @@
 		87AA46792A54C8E200C997B7 /* libgeneral.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgeneral.0.dylib; path = ../../../../usr/local/lib/libgeneral.0.dylib; sourceTree = "<group>"; };
 		87AA46812A54CADF00C997B7 /* inject_ciritcald */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = inject_ciritcald; sourceTree = BUILT_PRODUCTS_DIR; };
 		87AA46882A54CAF200C997B7 /* inject_criticald.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = inject_criticald.cpp; path = tools/inject_criticald.cpp; sourceTree = SOURCE_ROOT; };
+		87F10D502AD5E0A6007382D3 /* libtakeover.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = libtakeover.entitlements; sourceTree = "<group>"; };
+		87F10D512AD5E160007382D3 /* inject_ciritcald.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = inject_ciritcald.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -73,7 +63,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				87AA468A2A54CB6400C997B7 /* libgeneral.0.dylib in Frameworks */,
+				87887D2B2AD5E39600116670 /* libgeneral.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -102,6 +92,7 @@
 		87AA466C2A54C84100C997B7 /* libtakeover */ = {
 			isa = PBXGroup;
 			children = (
+				87F10D502AD5E0A6007382D3 /* libtakeover.entitlements */,
 				87AA46762A54C89100C997B7 /* TKexception.hpp */,
 				87AA46772A54C89100C997B7 /* libtakeover.hpp */,
 				87AA46742A54C88100C997B7 /* libtakeover.cpp */,
@@ -122,6 +113,7 @@
 		87AA46822A54CADF00C997B7 /* inject_ciritcald */ = {
 			isa = PBXGroup;
 			children = (
+				87F10D512AD5E160007382D3 /* inject_ciritcald.entitlements */,
 				87AA46882A54CAF200C997B7 /* inject_criticald.cpp */,
 			);
 			path = inject_ciritcald;
@@ -154,7 +146,6 @@
 				87AA467D2A54CADF00C997B7 /* Sources */,
 				87AA467E2A54CADF00C997B7 /* Frameworks */,
 				87AA467F2A54CADF00C997B7 /* CopyFiles */,
-				87AA468C2A54CB6400C997B7 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -347,8 +338,13 @@
 		87AA46722A54C84100C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = (
+					"$(ARCHS_STANDARD)",
+					arm64e,
+				);
+				CODE_SIGN_ENTITLEMENTS = libtakeover/libtakeover.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
@@ -367,8 +363,13 @@
 		87AA46732A54C84100C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = (
+					"$(ARCHS_STANDARD)",
+					arm64e,
+				);
+				CODE_SIGN_ENTITLEMENTS = libtakeover/libtakeover.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
 					"$(SRCROOT)/include",
@@ -381,12 +382,15 @@
 		87AA46862A54CADF00C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
+				CODE_SIGN_ENTITLEMENTS = inject_ciritcald/inject_ciritcald.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 					XCODE,
+					DUMP_CRASH_BACKTRACE,
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -395,8 +399,10 @@
 		87AA46872A54CADF00C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
+				ARCHS = arm64e;
+				CODE_SIGN_ENTITLEMENTS = inject_ciritcald/inject_ciritcald.entitlements;
 				CODE_SIGN_STYLE = Automatic;
+				ENABLE_HARDENED_RUNTIME = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;

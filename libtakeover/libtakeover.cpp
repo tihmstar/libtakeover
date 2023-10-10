@@ -84,15 +84,15 @@ static void remote_pthread_backtrace(takeover &crp, void *remote_pthread, vm_add
     const uint8_t *frame = 0;
     uint8_t *next = 0;
     
-    uint8_t *stacktop = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_get_stackaddr_np"), {(cpuword_t)remote_pthread});
-    uint8_t *stackbot = stacktop - (size_t)crp.callfunc(crp.getRemoteSym("pthread_get_stacksize_np"), {(cpuword_t)remote_pthread});
+    uint8_t *stacktop = (uint8_t *)crp.callfunc(dlsym(RTLD_NEXT, "pthread_get_stackaddr_np"), {(cpuword_t)remote_pthread});
+    uint8_t *stackbot = stacktop - (size_t)crp.callfunc(dlsym(RTLD_NEXT, "pthread_get_stacksize_np"), {(cpuword_t)remote_pthread});
 
     *nb = 0;
 
     // Rely on the fact that our caller has an empty stackframe (no local vars)
     // to determine the minimum size of a stackframe (frame ptr & return addr)
     frame = startfp;
-    next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
+    next = (uint8_t *)crp.callfunc(dlsym(RTLD_NEXT, "pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
 
     /* make sure return address is never out of bounds */
     stacktop -= (next - frame);
@@ -104,11 +104,11 @@ static void remote_pthread_backtrace(takeover &crp, void *remote_pthread, vm_add
         if(!INSTACK(next) || !ISALIGNED(next) || next <= frame)
             return;
         frame = next;
-        next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
+        next = (uint8_t *)crp.callfunc(dlsym(RTLD_NEXT, "pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
     }
     while (max--) {
         uintptr_t retaddr = 0;
-        next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, (cpuword_t)remote_pthread + sizeof(pthread_t)});
+        next = (uint8_t *)crp.callfunc(dlsym(RTLD_NEXT, "pthread_stack_frame_decode_np"), {(cpuword_t)frame, (cpuword_t)remote_pthread + sizeof(pthread_t)});
         crp.readMem((uint8_t*)remote_pthread + sizeof(pthread_t), &retaddr, sizeof(retaddr));
         buffer[*nb] = retaddr;
         (*nb)++;
@@ -380,7 +380,7 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
 #ifdef DUMP_CRASH_BACKTRACE
         if (!isGoodMagic) {
             if (_isCrashReporter) {
-                debug("not printing backtrace in crash reporter mode!");
+                error("not printing backtrace in crash reporter mode!");
             }else{
 #ifndef XCODE
                 try {
@@ -867,7 +867,7 @@ void takeover::deallocMem(void *remote, size_t size){
         
 std::string takeover::readString(const void *remote){
     std::string ret;
-    size_t strlen = callfunc(getRemoteSym("strlen"), {(cpuword_t)remote});
+    size_t strlen = callfunc(dlsym(RTLD_NEXT, "strlen"), {(cpuword_t)remote});
     ret.resize(strlen);
     readMem(remote, (void*)ret.data(), ret.size());
     return ret;
@@ -1036,10 +1036,17 @@ static const char *crashreporter_string_for_code(int code){
     }
 }
 
+#if defined (__arm64__)
+#define FMT_CPUWORD "%016llx"
+#elif defined (__arm__)
+#define FMT_CPUWORD "%08x"
+#endif
+
+        
 void takeover::remote_crashreporter_dump_backtrace_line(takeover &crp, vm_address_t addr){
     Dl_info info = {};
     cpuword_t remote_into = (cpuword_t)crp._remotePthread+sizeof(pthread_t);
-    crp.callfunc(crp.getRemoteSym("dladdr"), {(cpuword_t)addr,(cpuword_t)remote_into});
+    crp.callfunc(dlsym(RTLD_NEXT, "dladdr"), {(cpuword_t)addr,(cpuword_t)remote_into});
     crp.readMem((void*)remote_into, &info, sizeof(info));
 
     const char *remote_sname = info.dli_sname;
@@ -1054,7 +1061,7 @@ void takeover::remote_crashreporter_dump_backtrace_line(takeover &crp, vm_addres
     }
     fname = crp.readString(remote_fname);
 
-    printf("0x%lX: %s (0x%lX + 0x%lX) (%s(0x%lX) + 0x%lX)\n", addr, sname.c_str(), (vm_address_t)info.dli_saddr, addr - (vm_address_t)info.dli_saddr, fname.c_str(), (vm_address_t)info.dli_fbase, addr - (vm_address_t)info.dli_fbase);
+    printf("0x" FMT_CPUWORD ": %s \t (0x" FMT_CPUWORD " + 0x%lX) (%s(0x" FMT_CPUWORD ") + 0x%lX)\n", addr, sname.c_str(), (vm_address_t)info.dli_saddr, addr - (vm_address_t)info.dli_saddr, fname.c_str(), (vm_address_t)info.dli_fbase, addr - (vm_address_t)info.dli_fbase);
 }
 
 void takeover::remote_crashreporter_dump(takeover &crp, int code, int subcode, arm_thread_state64_t threadState, arm_exception_state64_t exceptionState, vm_address_t *bt){
@@ -1089,7 +1096,7 @@ void takeover::remote_crashreporter_dump(takeover &crp, int code, int subcode, a
             printf(", ");
         }
     }
-    printf(" lr = 0x%016lX,  pc = 0x%016llX,  sp = 0x%016lX,  fp = 0x%016lX, cpsr=         0x%08X, far = 0x%016llX\n\n", __darwin_arm_thread_state64_get_lr(threadState), pc, __darwin_arm_thread_state64_get_sp(threadState), __darwin_arm_thread_state64_get_fp(threadState), threadState.__cpsr, exceptionState.__far);
+    printf(" lr = 0x" FMT_CPUWORD ",  pc = 0x" FMT_CPUWORD ",  sp = 0x" FMT_CPUWORD ",  fp = 0x" FMT_CPUWORD ", cpsr=         0x%08X, far = 0x" FMT_CPUWORD "\n\n", __darwin_arm_thread_state64_get_lr(threadState), pc, __darwin_arm_thread_state64_get_sp(threadState), __darwin_arm_thread_state64_get_fp(threadState), threadState.__cpsr, exceptionState.__far);
 
     printf("Backtrace:\n");
     remote_crashreporter_dump_backtrace_line(crp, (vm_address_t)pc);
