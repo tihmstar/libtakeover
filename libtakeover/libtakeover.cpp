@@ -11,28 +11,18 @@
 #include <stdlib.h>
 #include <dlfcn.h>
 #include <pthread/pthread.h>
+#include <pthread/stack_np.h>
 #include <stdlib.h>
 #include <libgeneral/macros.h>
 #include <ptrauth.h>
 #include <mach-o/dyld_images.h>
 #include <objc/runtime.h>
-
 #include <unistd.h>
 
-#if defined (__arm64__)
-
-#   define MY_THREAD_STATE ARM_THREAD_STATE64
-#   define MY_THREAD_STATE_COUNT ARM_THREAD_STATE64_COUNT
-#   define my_thread_state_t arm_thread_state64_t
-
-#elif defined (__arm__)
-
-#   define MY_THREAD_STATE ARM_THREAD_STATE
-#   define MY_THREAD_STATE_COUNT ARM_THREAD_STATE_COUNT
-#   define my_thread_state_t arm_thread_state_t
-
+#ifdef DUMP_CRASH_BACKTRACE
+#include <sys/utsname.h>
+#include <dlfcn.h>
 #endif
-
 
 using namespace tihmstar;
 
@@ -50,6 +40,13 @@ typedef struct {
     mach_msg_body_t msgh_body;
     mach_msg_port_descriptor_t thread;
     mach_msg_port_descriptor_t task;
+    int unused1;
+    exception_type_t exception;
+    exception_data_type_t code;
+    int unused2;
+    uint64_t subcode;
+    my_exception_state_t estate;
+    my_thread_state_t state;
     NDR_record_t NDR;
 } exception_raise_request; // the bits we need at least
 
@@ -69,10 +66,65 @@ typedef struct {
 } exception_raise_state_reply;
 #pragma pack()
 
+#pragma mark helper
+
+
+#define    INSTACK(a)    ((a) >= stackbot && (a) <= stacktop)
+#if defined(__x86_64__)
+#define    ISALIGNED(a)    ((((uintptr_t)(a)) & 0xf) == 0)
+#elif defined(__i386__)
+#define    ISALIGNED(a)    ((((uintptr_t)(a)) & 0xf) == 8)
+#elif defined(__arm__) || defined(__arm64__)
+#define    ISALIGNED(a)    ((((uintptr_t)(a)) & 0x1) == 0)
+#endif
+
+__attribute__((noinline))
+static void remote_pthread_backtrace(takeover &crp, void *remote_pthread, vm_address_t *buffer, unsigned max, unsigned *nb, unsigned skip, const void *startfp_){
+    const uint8_t *startfp = (const uint8_t*)startfp_;
+    const uint8_t *frame = 0;
+    uint8_t *next = 0;
+    
+    uint8_t *stacktop = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_get_stackaddr_np"), {(cpuword_t)remote_pthread});
+    uint8_t *stackbot = stacktop - (size_t)crp.callfunc(crp.getRemoteSym("pthread_get_stacksize_np"), {(cpuword_t)remote_pthread});
+
+    *nb = 0;
+
+    // Rely on the fact that our caller has an empty stackframe (no local vars)
+    // to determine the minimum size of a stackframe (frame ptr & return addr)
+    frame = startfp;
+    next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
+
+    /* make sure return address is never out of bounds */
+    stacktop -= (next - frame);
+
+    if(!INSTACK(frame) || !ISALIGNED(frame))
+        return;
+    while (startfp || skip--) {
+        if (startfp && startfp < next) break;
+        if(!INSTACK(next) || !ISALIGNED(next) || next <= frame)
+            return;
+        frame = next;
+        next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, 0});
+    }
+    while (max--) {
+        uintptr_t retaddr = 0;
+        next = (uint8_t *)crp.callfunc(crp.getRemoteSym("pthread_stack_frame_decode_np"), {(cpuword_t)frame, (cpuword_t)remote_pthread + sizeof(pthread_t)});
+        crp.readMem((uint8_t*)remote_pthread + sizeof(pthread_t), &retaddr, sizeof(retaddr));
+        buffer[*nb] = retaddr;
+        (*nb)++;
+        if(!INSTACK(next) || !ISALIGNED(next) || next <= frame)
+            return;
+        frame = next;
+    }
+}
+
+
+#pragma mark takeover
 takeover::takeover()
     /* init member vars */
     :_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
     _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _signptr_cb{nullptr}
+,_remotePthread(NULL),_isCrashReporter(false)
 {
     
 }
@@ -82,6 +134,7 @@ takeover::takeover(mach_port_t target, std::function<cpuword_t(cpuword_t ptr)> s
     :_target(target),_remoteStack(0),_marionetteThread(MACH_PORT_NULL),_exceptionHandler(MACH_PORT_NULL),_remoteSelf(MACH_PORT_NULL),_emsg({}),
 _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _signptr_cb{signptr_cb}
 ,_isRemotePACed(false)
+,_remotePthread(NULL),_isCrashReporter(false)
 {
     bool didConstructSuccessfully = false;
     cpuword_t *localStack = NULL;
@@ -195,7 +248,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
     assure(!mach_port_insert_right(mach_task_self(),_exceptionHandler, _exceptionHandler, MACH_MSG_TYPE_MAKE_SEND));
     
     //set our new port
-    assure(!thread_set_exception_ports(_marionetteThread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), _exceptionHandler, EXCEPTION_STATE | MACH_EXCEPTION_CODES, MY_THREAD_STATE));
+    assure(!thread_set_exception_ports(_marionetteThread, EXC_MASK_ALL & ~(EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), _exceptionHandler, EXCEPTION_STATE_IDENTITY | MACH_EXCEPTION_CODES, MY_THREAD_STATE));
 
     //initialize our remote thread
     assure(!thread_resume(_marionetteThread));
@@ -213,11 +266,14 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
 takeover::takeover(takeover &&tk)
     :_target(tk._target),_remoteStack(tk._remoteStack),_marionetteThread(tk._marionetteThread),_exceptionHandler(tk._exceptionHandler),_emsg(tk._emsg),
     _isFakeThread(tk._isFakeThread), _signptr_cb{tk._signptr_cb}
+    ,_remotePthread(tk._remotePthread),_isCrashReporter(tk._isCrashReporter)
+
 {
     tk._remoteStack = 0;
     tk._target = MACH_PORT_NULL;
     tk._exceptionHandler = MACH_PORT_NULL;
     tk._marionetteThread = MACH_PORT_NULL;
+    tk._remotePthread = NULL;
 }
 
 takeover takeover::takeoverWithExceptionHandler(mach_port_t exceptionHandler){
@@ -238,18 +294,20 @@ void takeover::setSignptrCB(std::function<cpuword_t(cpuword_t ptr)> signptr_cb){
 
 
 cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
-    my_thread_state_t *state = (my_thread_state_t*)(_emsg.data+0x24);
+    exception_raise_request* req = (exception_raise_request*)&_emsg;
+    my_thread_state_t *state = &req->state;
+    my_exception_state_t *estate = &req->estate;
     cpuword_t lrmagic = 0x71717171;
     
-#ifdef DEBUG
-    {
-        printf("calling (0x%016llx)(",(uint64_t)addr);
-        for (auto arg : x) {
-            printf("0x%016llx, ",arg);
-        }
-        printf(")\n");
-    }
-#endif
+//#ifdef DEBUG
+//    {
+//        printf("calling (0x%016llx)(",(uint64_t)addr);
+//        for (auto arg : x) {
+//            printf("0x%016llx, ",arg);
+//        }
+//        printf(")\n");
+//    }
+//#endif
     
 #if defined (__arm64__)
     if (_signptr_cb) {
@@ -290,7 +348,6 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
 #endif
     
     exception_raise_state_reply reply = {};
-    exception_raise_request* req = (exception_raise_request*)&_emsg;
 
     reply.Head.msgh_bits = MACH_MSGH_BITS(MACH_MSGH_BITS_REMOTE(_emsg.head.msgh_bits), 0);
     reply.new_stateCnt = MY_THREAD_STATE_COUNT;
@@ -312,12 +369,57 @@ cpuword_t takeover::callfunc(void *addr, const std::vector<cpuword_t> &x){
     assure(!mach_msg(&_emsg.head, MACH_RCV_MSG|MACH_RCV_LARGE, 0, sizeof(_emsg), _exceptionHandler, 0, MACH_PORT_NULL));
     
     //get result (implicit through receiving mach_msg)
+    {
+        bool isGoodMagic = false;
+#if defined (__arm64__)
+        isGoodMagic = (state->__x[32]/*PC*/ & 0xFFFFFFFF) == lrmagic;
+#else
+        isGoodMagic = (state->__pc & (~1)) == (lrmagic & (~1));
+#endif
+        
+#ifdef DUMP_CRASH_BACKTRACE
+        if (!isGoodMagic) {
+            if (_isCrashReporter) {
+                debug("not printing backtrace in crash reporter mode!");
+            }else{
+#ifndef XCODE
+                try {
+#endif
+                    vm_address_t *bt = NULL;
+                    cleanup([&]{
+                        safeFree(bt);
+                    });
+                    void *fp = NULL;
+                    unsigned btCnt = 100;
+                    
+                    assure(bt = (vm_address_t*)calloc(btCnt,sizeof(vm_address_t)));
+                    
+        #if defined (__arm64__)
+                    fp = (void *)__darwin_arm_thread_state64_get_fp(*state);
+        #else
+                    fp = (void *)__darwin_arm_thread_state64_get_fp(state->__r[11]);
+        #endif
+                    takeover crp(_target);
+                    crp._isCrashReporter = true;
+                    void *remote_pthread = 0;
+                    crp.readMem(_remotePthread, &remote_pthread, sizeof(remote_pthread));
+                    remote_pthread_backtrace(crp, remote_pthread, bt, btCnt, &btCnt, 0, fp);
+                    remote_crashreporter_dump(crp, req->code, (int)req->subcode, *state, *estate, bt);
+#ifndef XCODE
+                } catch (tihmstar::exception &e) {
+                    error("Failed to get remote backtrace:\n%s",e.dumpStr().c_str());
+                }
+#endif
+            }
+        }
+#endif
         
 #if defined (__arm64__)
-    retcustomassure(TKexception_Bad_PC_Magic, (state->__x[32]/*PC*/ & 0xFFFFFFFF) == lrmagic, "unexpected PC after callfunc=0x%016llx",state->__x[32]);
+        retcustomassure(TKexception_Bad_PC_Magic, isGoodMagic, "unexpected PC after callfunc=0x%016llx",state->__x[32]);
 #else
-    retcustomassure(TKexception_Bad_PC_Magic, (state->__pc & (~1)) == (lrmagic & (~1)), "unexpected PC after callfunc=0x%08x",state->__pc);
+        retcustomassure(TKexception_Bad_PC_Magic, isGoodMagic, "unexpected PC after callfunc=0x%08x",state->__pc);
 #endif
+    }
     
 #if defined (__arm64__)
     return state->__x[0];
@@ -331,7 +433,6 @@ void takeover::kidnapThread(){
     
     bool lockIsInited = false;
     void *mem_mutex           = NULL;
-    void *mem_thread          = NULL;
     void *func_mutex_destroy_pc  = NULL;
     mach_port_t kidnapped_thread = 0;
     mach_port_t newExceptionHandler = 0;
@@ -351,14 +452,6 @@ void takeover::kidnapThread(){
                 e.dump();
             }
             mem_mutex = NULL;
-        }
-        if (mem_thread) {
-            try {
-                deallocMem(mem_thread,sizeof(pthread_t));
-            } catch (tihmstar::exception &e) {
-                e.dump();
-            }
-            mem_thread = NULL;
         }
         safeFreeCustom(kidnapped_thread, thread_terminate);
         if (newExceptionHandler) {
@@ -382,7 +475,7 @@ void takeover::kidnapThread(){
     bool isThreadSuspended = false;
     
     assure(mem_mutex = allocMem(sizeof(pthread_mutex_t)));
-    assure(mem_thread = allocMem(sizeof(pthread_t)));
+    assure(_remotePthread = allocMem(sizeof(pthread_t)));
 
 #define _PTHREAD_CREATE_FROM_MACH_THREAD  0x1
 #define _PTHREAD_CREATE_SUSPENDED         0x2
@@ -402,7 +495,7 @@ void takeover::kidnapThread(){
         pt_from_mt_pc = ((uint8_t*)pt_from_mt_pc)+4;
         pt_from_mt_pc = ptrauth_sign_unauthenticated(pt_from_mt_pc, ptrauth_key_function_pointer, 0);
         
-        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)mem_thread, NULL, (cpuword_t)0x71717171, (cpuword_t)0, _PTHREAD_CREATE_FROM_MACH_THREAD | _PTHREAD_CREATE_SUSPENDED})));
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remotePthread, NULL, (cpuword_t)0x71717171, (cpuword_t)0, _PTHREAD_CREATE_FROM_MACH_THREAD | _PTHREAD_CREATE_SUSPENDED})));
         isThreadSuspended = true;
     }else{
         assure(!(ret = callfunc(func_mutex_init_pc, {(cpuword_t)mem_mutex,0})));
@@ -410,7 +503,7 @@ void takeover::kidnapThread(){
 
         assure(!(ret = callfunc(func_mutex_lock_pc, {(cpuword_t)mem_mutex})));
 
-        assure(!(ret = callfunc(func_pthread_create_pc, {(cpuword_t)mem_thread,0,(cpuword_t)func_mutex_lock_pc,(cpuword_t)mem_mutex})));
+        assure(!(ret = callfunc(func_pthread_create_pc, {(cpuword_t)_remotePthread,0,(cpuword_t)func_mutex_lock_pc,(cpuword_t)mem_mutex})));
     }
 
     usleep(420); //wait for new thread to spawn
@@ -450,7 +543,7 @@ void takeover::kidnapThread(){
     assure(!mach_port_insert_right(mach_task_self(),newExceptionHandler, newExceptionHandler, MACH_MSG_TYPE_MAKE_SEND));
     
     //set our new port
-    assure(!thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_BREAKPOINT | EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_STATE | MACH_EXCEPTION_CODES, MY_THREAD_STATE));
+    assure(!thread_set_exception_ports(kidnapped_thread, EXC_MASK_ALL & ~(EXC_MASK_MACH_SYSCALL | EXC_MASK_SYSCALL | EXC_MASK_RPC_ALERT), newExceptionHandler, EXCEPTION_STATE_IDENTITY | MACH_EXCEPTION_CODES, MY_THREAD_STATE));
     
 #if defined (__arm64__)
     state.__x[30] = 0x6161616161616161;
@@ -726,7 +819,7 @@ void *takeover::takeover::getRemoteSym(const char *sym){
     return ret;
 }
 
-void takeover::readMem(void *remote, void *outAddr, size_t size){
+void takeover::readMem(const void *remote, void *outAddr, size_t size){
     mach_vm_size_t out = size;
     if (_target) {
         assure(!mach_vm_read_overwrite(_target, (mach_vm_address_t)remote , (mach_vm_size_t)size, (mach_vm_address_t) outAddr, &out));
@@ -735,7 +828,7 @@ void takeover::readMem(void *remote, void *outAddr, size_t size){
         assure(!callfunc((void*)mach_vm_write,{(cpuword_t)_remoteSelf, (cpuword_t)outAddr, (cpuword_t)remote, (cpuword_t)size}));
     }
 }
-void takeover::writeMem(void *remote, const void *inAddr, size_t size){
+void takeover::writeMem(const void *remote, const void *inAddr, size_t size){
     if (_target) {
         assure(!mach_vm_write(_target, (mach_vm_address_t)remote, (vm_offset_t)inAddr, (mach_msg_type_number_t)size));
     }else{
@@ -771,6 +864,14 @@ void takeover::deallocMem(void *remote, size_t size){
         assure(!callfunc((void*)mach_vm_deallocate,{(cpuword_t)mach_task_self_, (cpuword_t)remote, (cpuword_t)size}));
     }
 }
+        
+std::string takeover::readString(const void *remote){
+    std::string ret;
+    size_t strlen = callfunc(getRemoteSym("strlen"), {(cpuword_t)remote});
+    ret.resize(strlen);
+    readMem(remote, (void*)ret.data(), ret.size());
+    return ret;
+}
 
 //noDrop means don't drop send right if we could
 std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
@@ -788,7 +889,8 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
     
     if (_marionetteThread) {
         void *func_pthread_exit = NULL;
-        my_thread_state_t *state = (my_thread_state_t*)(_emsg.data+0x24);
+        exception_raise_request* req = (exception_raise_request*)&_emsg;
+        my_thread_state_t *state = &req->state;
         kern_return_t ret = 0;
         
         func_pthread_exit  = dlsym(RTLD_NEXT, "pthread_exit");
@@ -875,6 +977,14 @@ std::pair<int, kern_return_t> takeover::deinit(bool noDrop){
 
 
 takeover::~takeover(){
+    if (_remotePthread) {
+        try {
+            deallocMem(_remotePthread,sizeof(pthread_t));
+        } catch (tihmstar::exception &e) {
+            e.dump();
+        }
+        _remotePthread = NULL;
+    }
     auto err = deinit();
     if(err.first){
         error("[~takeover] deinit failed on line %d with code %d",err.first,err.second);
@@ -903,3 +1013,93 @@ bool takeover::targetIsPACed(const mach_port_t target){
     assure(!(err = mach_vm_read_overwrite(target, (mach_vm_address_t)someclass , (mach_vm_size_t)out, (mach_vm_address_t)&remoteClass, &out)));
     return (remoteClass >> 35);
 }
+
+#ifdef DUMP_CRASH_BACKTRACE
+
+static const char *crashreporter_string_for_code(int code){
+#define makeCode(c) case c: return #c
+    switch (code){
+        makeCode(EXC_BAD_ACCESS);
+        makeCode(EXC_BAD_INSTRUCTION);
+        makeCode(EXC_ARITHMETIC);
+        makeCode(EXC_EMULATION);
+        makeCode(EXC_SOFTWARE);
+        makeCode(EXC_BREAKPOINT);
+        makeCode(EXC_SYSCALL);
+        makeCode(EXC_MACH_SYSCALL);
+        makeCode(EXC_RPC_ALERT);
+        makeCode(EXC_CRASH);
+        makeCode(EXC_RESOURCE);
+        makeCode(EXC_GUARD);
+        makeCode(EXC_CORPSE_NOTIFY);
+        default: return "UNKNOWN CODE";
+    }
+}
+
+void takeover::remote_crashreporter_dump_backtrace_line(takeover &crp, vm_address_t addr){
+    Dl_info info = {};
+    cpuword_t remote_into = (cpuword_t)crp._remotePthread+sizeof(pthread_t);
+    crp.callfunc(crp.getRemoteSym("dladdr"), {(cpuword_t)addr,(cpuword_t)remote_into});
+    crp.readMem((void*)remote_into, &info, sizeof(info));
+
+    const char *remote_sname = info.dli_sname;
+    const char *remote_fname = info.dli_fname;
+    std::string sname;
+    std::string fname;
+
+    if (!remote_sname) {
+        sname = "<unexported>";
+    }else{
+        sname = crp.readString(remote_sname);
+    }
+    fname = crp.readString(remote_fname);
+
+    printf("0x%lX: %s (0x%lX + 0x%lX) (%s(0x%lX) + 0x%lX)\n", addr, sname.c_str(), (vm_address_t)info.dli_saddr, addr - (vm_address_t)info.dli_saddr, fname.c_str(), (vm_address_t)info.dli_fbase, addr - (vm_address_t)info.dli_fbase);
+}
+
+void takeover::remote_crashreporter_dump(takeover &crp, int code, int subcode, arm_thread_state64_t threadState, arm_exception_state64_t exceptionState, vm_address_t *bt){
+    struct utsname systemInfo;
+    uname(&systemInfo);
+
+    uint64_t pc = (uint64_t)__darwin_arm_thread_state64_get_pc(threadState);
+
+    printf("Device Model:   %s\n", systemInfo.machine);
+    printf("Device Version: %s\n", systemInfo.version);
+#ifdef __arm64e__
+    printf("Architecture:   arm64e\n");
+#else
+    printf("Architecture:   arm64\n");
+#endif
+    printf("\n");
+
+    printf("Exception:         %s\n", crashreporter_string_for_code(code));
+    printf("Exception Subcode: %d\n", subcode);
+    printf("\n");
+
+    info("Register State:\n");
+    for(int i = 0; i <= 28; i++) {
+        if (i < 10) {
+            printf(" ");
+        }
+        printf("x%d = 0x%016llX", i, threadState.__x[i]);
+        if ((i+1) % (6+1) == 0) {
+            printf("\n");
+        }
+        else {
+            printf(", ");
+        }
+    }
+    printf(" lr = 0x%016lX,  pc = 0x%016llX,  sp = 0x%016lX,  fp = 0x%016lX, cpsr=         0x%08X, far = 0x%016llX\n\n", __darwin_arm_thread_state64_get_lr(threadState), pc, __darwin_arm_thread_state64_get_sp(threadState), __darwin_arm_thread_state64_get_fp(threadState), threadState.__cpsr, exceptionState.__far);
+
+    printf("Backtrace:\n");
+    remote_crashreporter_dump_backtrace_line(crp, (vm_address_t)pc);
+    int btI = 0;
+    vm_address_t btAddr = bt[btI++];
+    while (btAddr != 0) {
+        remote_crashreporter_dump_backtrace_line(crp, btAddr);
+        btAddr = bt[btI++];
+    }
+    printf("\n");
+}
+
+#endif

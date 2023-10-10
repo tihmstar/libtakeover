@@ -347,12 +347,13 @@
 		87AA46722A54C84100C997B7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64e;
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 					XCODE,
+					DUMP_CRASH_BACKTRACE,
 				);
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,
@@ -366,7 +367,7 @@
 		87AA46732A54C84100C997B7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64e;
+				ARCHS = "$(ARCHS_STANDARD)";
 				CODE_SIGN_STYLE = Automatic;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include,

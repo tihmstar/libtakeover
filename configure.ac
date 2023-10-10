@@ -42,10 +42,21 @@ AC_ARG_ENABLE([debug],
             [debug_build=true],
             [debug_build=false])
 
-if test "$debug_build" = true; then
+AC_ARG_ENABLE([crashdump],
+            [AS_HELP_STRING([--enable-crashdump],
+            [enable crashdump feature(default is no)])],
+            [enable_crashdump=true],
+            [enable_crashdump=false])
+
+if test "x$debug_build" == "xtrue"; then
   echo "*** Note: debug build requested ***"
   CFLAGS+=" -g -O0 -DDEBUG=1"
   CXXFLAGS+=" -g -O0 -DDEBUG=1"
+fi
+
+if test "x$enable_crashdump" == "xtrue"; then
+  echo "*** Note: enable crashdump feature ***"
+  AC_DEFINE(DUMP_CRASH_BACKTRACE, 1, [Define if building with crash dump feature])
 fi
 
 # Checks for header files.

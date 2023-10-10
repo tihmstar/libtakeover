@@ -12,6 +12,13 @@
 #include "TKexception.hpp"
 #include <unistd.h>
 
+__attribute__((noinline))
+void crash(void){
+    printf("crashing...\n");
+    *(uint32_t*)4 = 0x77;
+    printf("crashing...\n");
+}
+
 int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,uint64_t a7,uint64_t a8){
     printf("lol\n");
     printf("a1=%p\n",(void*)a1);
@@ -19,6 +26,9 @@ int lol(uint64_t a1,uint64_t a2,uint64_t a3,uint64_t a4,uint64_t a5,uint64_t a6,
     printf("a3=%p\n",(void*)a3);
     printf("a4=%p\n",(void*)a4);
     printf("a5=%p\n",(void*)a5);
+    
+    crash();
+    
     printf("a6=%p\n",(void*)a6);
     printf("a6=%p\n",(void*)a7);
     printf("a7=%p\n",(void*)a8);
@@ -36,7 +46,6 @@ int main(int argc, const char * argv[]) {
     pthread_t *asd = &dsa;
 
 //    pthread_create(asd, NULL, loop, (void*)0x61718191);
-    
     printf("pid=%d\n",getpid());
 
     {

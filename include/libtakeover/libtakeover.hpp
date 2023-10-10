@@ -20,6 +20,22 @@
     typedef uint32_t cpuword_t;
 #endif
 
+#if defined (__arm64__)
+
+#   define MY_THREAD_STATE ARM_THREAD_STATE64
+#   define MY_THREAD_STATE_COUNT ARM_THREAD_STATE64_COUNT
+#   define my_thread_state_t arm_thread_state64_t
+#   define my_exception_state_t arm_exception_state64_t
+
+#elif defined (__arm__)
+
+#   define MY_THREAD_STATE ARM_THREAD_STATE
+#   define MY_THREAD_STATE_COUNT ARM_THREAD_STATE_COUNT
+#   define my_thread_state_t arm_thread_state_t
+#   define my_exception_state_t arm_exception_state_t
+
+#endif
+
 namespace tihmstar {
     typedef struct {
         mach_msg_header_t head;
@@ -35,6 +51,8 @@ namespace tihmstar {
         const mach_vm_size_t _remoteStackSize = 0x4000;
         bool _isFakeThread;
         bool _isRemotePACed;
+        void *_remotePthread;
+        bool _isCrashReporter;
         
         mach_port_t _remoteSelf;
         void *_remoteScratchSpace;
@@ -62,10 +80,12 @@ namespace tihmstar {
         void overtakeMe();
 
         void *getRemoteSym(const char *sym);
-        void readMem(void *remote, void *outAddr, size_t size);
-        void writeMem(void *remote, const void *inAddr, size_t size);
+        void readMem(const void *remote, void *outAddr, size_t size);
+        void writeMem(const void *remote, const void *inAddr, size_t size);
         void *allocMem(size_t size);
         void deallocMem(void *remote,size_t size);
+        
+        std::string readString(const void *remote);
 
         
         ~takeover();
@@ -74,6 +94,8 @@ namespace tihmstar {
         static std::string build_commit_sha();
         
         static bool targetIsPACed(const mach_port_t target);
+        static void remote_crashreporter_dump_backtrace_line(takeover &crp, vm_address_t addr);
+        static void remote_crashreporter_dump(takeover &crp, int code, int subcode, arm_thread_state64_t threadState, arm_exception_state64_t exceptionState, vm_address_t *bt);
     };
     
 };
