@@ -213,7 +213,7 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
 
 #if defined (__arm64__)
     state.__x[0] = (cpuword_t)_remoteStack;
-    state.__x[30] = 0x7171717171717171; //LR
+    arm_thread_state64_set_lr_fptr(state, ptrauth_sign_unauthenticated((void*)0x71717171, ptrauth_key_function_pointer, 0));
     if (_signptr_cb) {
         state.__x[32]/*PC*/ = (cpuword_t)_signptr_cb((cpuword_t)ptrauth_strip(dlsym(RTLD_NEXT, "thread_start"), ptrauth_key_asia));
     }else{
@@ -235,7 +235,11 @@ _isFakeThread(true), _remoteScratchSpace(NULL), _remoteScratchSpaceSize(0), _sig
     
     if (dlsym(RTLD_NEXT, "pthread_create_from_mach_thread")){
 #if defined (__arm64__)
-        state.__x[32] = 0x4141414141414141; //PC
+        if (_signptr_cb) {
+            state.__x[32]/*PC*/ = (cpuword_t)_signptr_cb((cpuword_t)0x414141414141);
+        }else{
+            arm_thread_state64_set_pc_fptr(state,ptrauth_sign_unauthenticated((void*)0x414141414141, ptrauth_key_function_pointer, 0));
+        }
 #elif defined (__arm__)
         state.__pc = 0x41414141;
 #endif
@@ -495,7 +499,7 @@ void takeover::kidnapThread(){
         pt_from_mt_pc = ((uint8_t*)pt_from_mt_pc)+4;
         pt_from_mt_pc = ptrauth_sign_unauthenticated(pt_from_mt_pc, ptrauth_key_function_pointer, 0);
         
-        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remotePthread, NULL, (cpuword_t)0x71717171, (cpuword_t)0, _PTHREAD_CREATE_FROM_MACH_THREAD | _PTHREAD_CREATE_SUSPENDED})));
+        assure(!(ret = callfunc(pt_from_mt_pc, {(cpuword_t)_remotePthread, NULL, (cpuword_t)ptrauth_sign_unauthenticated((void*)0x71717171, ptrauth_key_function_pointer, 0), (cpuword_t)0, _PTHREAD_CREATE_FROM_MACH_THREAD | _PTHREAD_CREATE_SUSPENDED})));
         isThreadSuspended = true;
     }else{
         assure(!(ret = callfunc(func_mutex_init_pc, {(cpuword_t)mem_mutex,0})));
@@ -516,7 +520,7 @@ void takeover::kidnapThread(){
 
         if (isThreadSuspended) {
 #if defined (__arm64__)
-            if (state.__x[2] == (cpuword_t)0x71717171) {
+            if (state.__x[2] == (cpuword_t)ptrauth_sign_unauthenticated((void*)0x71717171, ptrauth_key_function_pointer, 0)) {
 #elif defined (__arm__)
             if (state.__r[2] == (cpuword_t)0x71717171) {
 #endif

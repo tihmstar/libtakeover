@@ -56,11 +56,11 @@ void inject(uint32_t pid, const char *dylib){
         printf("platformizing failed! Continuing without platformization (injection to platform processes may fail!)\n");
     }
     
-    printf("Initing takeover...");
+    printf("Initing takeover...\n");
     tihmstar::takeover mytk(remoteTask);
     printf("ok!\n");
 
-    printf("kidnapping remote thread...");
+    printf("kidnapping remote thread...\n");
     mytk.kidnapThread();
     printf("ok!\n");
 
